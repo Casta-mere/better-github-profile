@@ -539,29 +539,88 @@ a[aria-disabled='true']:not(.btn) {
   text-decoration: underline;
 }
 
-/* Username */
+/* Username: the first step. Marked with the attention colour until the profile repository is found. */
 
 .user-box {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 720px;
+  margin: 0 0 24px;
+  padding: 14px 16px;
+  border-color: color-mix(in srgb, var(--attention) 60%, transparent);
+  background: color-mix(in srgb, var(--attention) 6%, var(--canvas));
+  scroll-margin-top: 16px;
+}
+
+.user-box.done {
+  border-color: color-mix(in srgb, var(--success) 50%, transparent);
+  background: var(--canvas);
+}
+
+.user-box-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+
+.user-box-title label {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* Primer's attention Label; success once done. */
+.start-label {
+  flex: none;
+  padding: 0 7px;
+  border: 1px solid var(--attention);
+  border-radius: 2em;
+  color: var(--attention);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+}
+
+.user-box.done .start-label {
+  border-color: var(--success);
+  color: var(--success);
+}
+
+.user-box-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 12px;
-  padding: 12px 16px;
 }
 
-.user-box label {
-  font-weight: 600;
+/* A medium button: as tall as the input next to it. */
+.sign-in {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 16px;
+  font-size: 14px;
+}
+
+.sign-in svg {
+  flex: none;
+  fill: currentColor;
+}
+
+.or {
+  color: var(--fg-muted);
 }
 
 .user-box input {
-  width: 220px;
+  width: 240px;
   max-width: 100%;
-  padding: 4px 8px;
+  padding: 5px 12px;
   border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--canvas);
   color: var(--fg);
-  font: 13px/20px var(--font);
+  font: 14px/20px var(--font);
 }
 
 .user-box input::placeholder {
@@ -579,8 +638,25 @@ a[aria-disabled='true']:not(.btn) {
   border-color: var(--danger);
 }
 
-.user-status {
-  flex-basis: 100%;
+@media (max-width: 543px) {
+  .sign-in {
+    flex: 1 1 100%;
+    justify-content: center;
+  }
+
+  .user-box input {
+    flex: 1 1 0;
+    width: auto;
+  }
+}
+
+/* Above step 1 while the repo links are off: points back to the username box. */
+.links-hint {
+  margin: 0;
+  padding: 8px 12px;
+  border: 1px solid color-mix(in srgb, var(--attention) 40%, transparent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--attention) 8%, transparent);
 }
 
 [data-tone='ok'] {
