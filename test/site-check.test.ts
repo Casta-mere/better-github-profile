@@ -1,5 +1,14 @@
-import { describe, expect, it } from 'vitest';
-import { checkSetup, lookupProfileRepo, type Fetch } from '../site/check';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  CHECK_PROXY,
+  checkSetup,
+  lookupProfileRepo,
+  proxied,
+  TYPING_PAUSE_MS,
+  whenTypingStops,
+  type Fetch,
+} from '../site/check';
+import { TELEMETRY_URL } from '../src/action/telemetry';
 
 /** A canned GitHub API answer, or a fetch that throws like a browser does when offline. */
 type Route = { status?: number; body?: unknown; headers?: Record<string, string> } | 'network-error';
@@ -258,5 +267,185 @@ describe('lookupProfileRepo', () => {
       kind: 'http-error',
       status: 500,
     });
+  });
+});
+
+describe('proxied', () => {
+  const PROXY = 'https://proxy.test/gh';
+  const DIRECT = 'https://api.github.com/repos/octo/octo/actions/workflows/profile-cards.yml/runs?per_page=1';
+  const VIA_PROXY = 'https://proxy.test/gh/repos/octo/octo/actions/workflows/profile-cards.yml/runs?per_page=1';
+  const INIT: RequestInit = { headers: { Accept: 'application/vnd.github+json' }, cache: 'no-cache' };
+
+  /** Answers by full URL; records each URL and init it was called with. */
+  function byUrl(routes: Record<string, Route>) {
+    const calls: [string, RequestInit | undefined][] = [];
+    const fetch: Fetch = async (url, init) => {
+      calls.push([url, init]);
+      const route = routes[url];
+      if (route === 'network-error' || route === undefined) throw new TypeError('Failed to fetch');
+      return Response.json(route.body ?? {}, { status: route.status ?? 200, headers: route.headers });
+    };
+    return { fetch, calls, urls: () => calls.map(([url]) => url) };
+  }
+
+  it('asks the proxy instead of api.github.com, with the same init', async () => {
+    const f = byUrl({ [VIA_PROXY]: { body: { via: 'proxy' } } });
+    const res = await proxied(f.fetch, PROXY)(DIRECT, INIT);
+    expect(await res.json()).toEqual({ via: 'proxy' });
+    expect(f.calls).toEqual([[VIA_PROXY, INIT]]);
+  });
+
+  it('defaults to CHECK_PROXY', async () => {
+    const f = byUrl({ [`${CHECK_PROXY}/repos/octo/octo`]: { body: {} } });
+    await proxied(f.fetch)('https://api.github.com/repos/octo/octo');
+    expect(f.urls()).toEqual([`${CHECK_PROXY}/repos/octo/octo`]);
+  });
+
+  it('goes direct when the proxy is unreachable', async () => {
+    const f = byUrl({ [VIA_PROXY]: 'network-error', [DIRECT]: { body: { via: 'direct' } } });
+    const res = await proxied(f.fetch, PROXY)(DIRECT, INIT);
+    expect(await res.json()).toEqual({ via: 'direct' });
+    expect(f.calls).toEqual([
+      [VIA_PROXY, INIT],
+      [DIRECT, INIT],
+    ]);
+  });
+
+  it.each([503, 500, 502])('goes direct when the proxy answers %i', async (status) => {
+    const f = byUrl({ [VIA_PROXY]: { status, body: { error: 'proxy not configured' } }, [DIRECT]: { body: { via: 'direct' } } });
+    const res = await proxied(f.fetch, PROXY)(DIRECT, INIT);
+    expect(await res.json()).toEqual({ via: 'direct' });
+    expect(f.urls()).toEqual([VIA_PROXY, DIRECT]);
+  });
+
+  it.each([
+    ['404', { status: 404, body: { message: 'Not Found' } }],
+    ['403 rate limit', RATE_LIMITED],
+    ['429', { status: 429, headers: { 'x-ratelimit-remaining': '0' } }],
+  ] as [string, Route][])('returns a %s as is, without going direct', async (_name, route) => {
+    const f = byUrl({ [VIA_PROXY]: route, [DIRECT]: { body: { via: 'direct' } } });
+    const res = await proxied(f.fetch, PROXY)(DIRECT, INIT);
+    expect(res.status).toBe(route === 'network-error' ? 0 : route.status);
+    expect(f.urls()).toEqual([VIA_PROXY]);
+  });
+
+  it('leaves other URLs alone', async () => {
+    const raw = 'https://raw.githubusercontent.com/octo/octo/main/cards/snapshot.json';
+    const lookalike = 'https://api.github.com.example.test/repos/octo/octo';
+    const f = byUrl({ [raw]: { body: {} }, [lookalike]: { body: {} } });
+    await proxied(f.fetch, PROXY)(raw);
+    await proxied(f.fetch, PROXY)(lookalike);
+    expect(f.urls()).toEqual([raw, lookalike]);
+  });
+
+  it('a setup check through the proxy reads the same verdicts', async () => {
+    const f = byUrl({
+      [`${PROXY}/repos/octo/octo`]: { body: { default_branch: 'trunk', owner: { login: 'Octo' } } },
+    });
+    expect(await lookupProfileRepo('octo', proxied(f.fetch, PROXY))).toEqual({
+      kind: 'found',
+      owner: 'Octo',
+      branch: 'trunk',
+    });
+    const limited = byUrl({ [`${PROXY}/repos/octo/octo`]: { status: 429, headers: { 'x-ratelimit-remaining': '0' } } });
+    expect(await lookupProfileRepo('octo', proxied(limited.fetch, PROXY))).toEqual({ kind: 'rate-limited' });
+  });
+
+  it('is the Worker the Action pings, so the two URLs cannot drift apart', () => {
+    expect(new URL(CHECK_PROXY).origin).toBe(new URL(TELEMETRY_URL).origin);
+    expect(new URL(CHECK_PROXY).pathname).toBe('/gh');
+  });
+});
+
+describe('whenTypingStops', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  /** Types `word` one character at a time, `gapMs` apart, like a person would. */
+  function typeSlowly(typing: ReturnType<typeof whenTypingStops>, word: string, gapMs = 300): void {
+    for (let i = 1; i <= word.length; i++) {
+      typing.typed(word.slice(0, i));
+      vi.advanceTimersByTime(gapMs);
+    }
+  }
+
+  it('pauses 1.2 s', () => {
+    expect(TYPING_PAUSE_MS).toBe(1200);
+  });
+
+  it('settles once, on the whole name, after a pause in typing', () => {
+    const settled: string[] = [];
+    const typing = whenTypingStops((v) => settled.push(v));
+    typeSlowly(typing, 'Casta-mere');
+    expect(settled).toEqual([]);
+    vi.advanceTimersByTime(TYPING_PAUSE_MS - 300 - 1);
+    expect(settled).toEqual([]);
+    vi.advanceTimersByTime(1);
+    expect(settled).toEqual(['Casta-mere']);
+    vi.advanceTimersByTime(60_000);
+    expect(settled).toEqual(['Casta-mere']);
+  });
+
+  it('settles at once on commit (Enter, or leaving the field), and not again after the pause', () => {
+    const settled: string[] = [];
+    const typing = whenTypingStops((v) => settled.push(v));
+    typeSlowly(typing, 'octo', 100);
+    typing.commit('octo');
+    expect(settled).toEqual(['octo']);
+    vi.advanceTimersByTime(60_000);
+    expect(settled).toEqual(['octo']);
+  });
+
+  it('ignores a commit with no typing since the value settled: Enter then change, or a pause then blur', () => {
+    const settled: string[] = [];
+    const typing = whenTypingStops((v) => settled.push(v));
+    typeSlowly(typing, 'octo');
+    typing.commit('octo');
+    typing.commit('octo');
+    expect(settled).toEqual(['octo']);
+
+    typeSlowly(typing, 'octocat');
+    vi.advanceTimersByTime(TYPING_PAUSE_MS);
+    typing.commit('octocat');
+    expect(settled).toEqual(['octo', 'octocat']);
+  });
+
+  it('settles again after more typing, even back to the same name', () => {
+    const settled: string[] = [];
+    const typing = whenTypingStops((v) => settled.push(v));
+    typing.typed('octo');
+    typing.commit('octo');
+    typing.typed('octoc');
+    typing.typed('octo');
+    vi.advanceTimersByTime(TYPING_PAUSE_MS);
+    expect(settled).toEqual(['octo', 'octo']);
+  });
+
+  it('markSettled: a lookup made another way cancels the pause, and a later commit of that name is ignored', () => {
+    const settled: string[] = [];
+    const typing = whenTypingStops((v) => settled.push(v));
+    typing.typed('octo');
+    typing.markSettled('octo');
+    vi.advanceTimersByTime(TYPING_PAUSE_MS);
+    typing.commit('octo');
+    expect(settled).toEqual([]);
+    typing.commit('octocat');
+    expect(settled).toEqual(['octocat']);
+  });
+
+  it('typing: true from a keystroke until the name settles', () => {
+    const typing = whenTypingStops(() => {});
+    expect(typing.typing).toBe(false);
+    typing.typed('o');
+    expect(typing.typing).toBe(true);
+    vi.advanceTimersByTime(TYPING_PAUSE_MS);
+    expect(typing.typing).toBe(false);
+    typing.typed('oc');
+    typing.commit('oc');
+    expect(typing.typing).toBe(false);
   });
 });

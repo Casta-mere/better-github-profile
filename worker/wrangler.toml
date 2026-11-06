@@ -8,3 +8,10 @@ database_name = "bgp-usage"
 # Created with `wrangler d1 create bgp-usage`; the table comes from
 # `wrangler d1 execute bgp-usage --remote --file schema.sql`.
 database_id = "960e24c2-5e4a-420c-a38d-32f2c30d6e55"
+
+# Per-IP limit for GET /gh, the setup check's GitHub proxy. The proxy's token is the
+# GITHUB_TOKEN secret (`wrangler secret put GITHUB_TOKEN`); without it /gh answers 503.
+[[ratelimits]]
+name = "CHECK_LIMIT"
+namespace_id = "1001"
+simple = { limit = 60, period = 60 }

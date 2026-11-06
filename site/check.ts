@@ -1,13 +1,21 @@
 import { rawFileUrl, WORKFLOW_PATH } from '../src/snippets/index';
 
 /**
- * The selector page's setup check: unauthenticated GitHub REST calls from the browser, read
- * into a verdict. Pure apart from the injected `fetch`, so every branch is tested with canned
- * answers. Secrets can't be read without admin rights, so the check reads the latest
- * workflow run instead.
+ * The selector page's setup check: GitHub REST calls from the browser, read into a verdict.
+ * Pure apart from the injected `fetch`, so every branch is tested with canned answers. The
+ * page sends them through the usage Worker's GitHub proxy (`proxied`), falling back to
+ * unauthenticated calls. Secrets can't be read without admin rights, so the check reads the
+ * latest workflow run instead.
  */
 
 export type Fetch = (url: string, init?: RequestInit) => Promise<Response>;
+
+/**
+ * The usage Worker's read-only GitHub proxy (worker/src/proxy.ts). It calls GitHub with the
+ * owner's token, so the page isn't held to GitHub's 60 unauthenticated requests an hour per IP.
+ * Same Worker as the Action's TELEMETRY_URL (a test keeps them together).
+ */
+export const CHECK_PROXY = 'https://better-github-profile-usage.castamerego.workers.dev/gh';
 
 /** Why GitHub gave no usable answer. */
 export type Trouble = { kind: 'rate-limited' } | { kind: 'network-error' } | { kind: 'http-error'; status: number };
@@ -51,8 +59,8 @@ const badBody = () => new Stop({ kind: 'http-error', status: 200 });
 
 /**
  * GET an API path: the parsed body, or null for a 404. Throws `Stop` for the rate limit, a
- * network error or any other status. `no-cache` makes the browser revalidate with the ETag,
- * so a re-check sees new runs and an unchanged answer (304) costs none of the rate limit.
+ * network error or any other status. `no-cache` makes the browser revalidate, so a re-check
+ * sees new runs; on direct calls GitHub's ETag makes an unchanged answer (304) free.
  */
 async function get(fetch: Fetch, path: string): Promise<unknown> {
   let res: Response;
@@ -70,6 +78,77 @@ async function get(fetch: Fetch, path: string): Promise<unknown> {
   } catch {
     throw new Stop({ kind: 'network-error' });
   }
+}
+
+/**
+ * `fetch`, sending GitHub API calls through the proxy at `proxyBase`. When the proxy can't
+ * answer (unreachable, not configured: 503, or another 5xx), asks api.github.com directly.
+ * Any other answer, including 404, 403 and 429, is GitHub's (or the proxy's limit) and is
+ * returned as is. Other URLs pass straight through.
+ */
+export function proxied(fetch: Fetch, proxyBase: string = CHECK_PROXY): Fetch {
+  return async (url, init) => {
+    if (!url.startsWith(`${API}/`)) return fetch(url, init);
+    try {
+      const res = await fetch(`${proxyBase}${url.slice(API.length)}`, init);
+      if (res.status < 500) return res;
+    } catch {
+      // Unreachable: go direct.
+    }
+    return fetch(url, init);
+  };
+}
+
+/** How long the username box waits after the last keystroke before looking the name up. */
+export const TYPING_PAUSE_MS = 1200;
+
+export interface TypingPause {
+  /** True from a keystroke until the value settles. */
+  readonly typing: boolean;
+  /** A keystroke: settle `value` after TYPING_PAUSE_MS without another. */
+  typed(value: string): void;
+  /** Enter, or leaving the field: settle `value` now, unless it already settled with no typing since. */
+  commit(value: string): void;
+  /** `value` was looked up another way (e.g. a button): cancel the pause without settling. */
+  markSettled(value: string): void;
+}
+
+/**
+ * Calls `settle(value)` once the user has finished typing a value: on `commit`, or after
+ * `pauseMs` without a keystroke. Never once per character, and Enter followed by the
+ * `change` event settles once.
+ */
+export function whenTypingStops(settle: (value: string) => void, pauseMs: number = TYPING_PAUSE_MS): TypingPause {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let typing = false;
+  let last: string | null = null;
+
+  const stop = (value: string) => {
+    clearTimeout(timer);
+    timer = undefined;
+    typing = false;
+    last = value;
+  };
+  const fire = (value: string) => {
+    stop(value);
+    settle(value);
+  };
+
+  return {
+    get typing() {
+      return typing;
+    },
+    typed(value) {
+      clearTimeout(timer);
+      typing = true;
+      timer = setTimeout(() => fire(value), pauseMs);
+    },
+    commit(value) {
+      if (!typing && value === last) return;
+      fire(value);
+    },
+    markSettled: stop,
+  };
 }
 
 async function guard<T>(work: () => Promise<T>): Promise<T | Trouble> {
@@ -133,8 +212,8 @@ function previewFile(names: string[]): string | null {
 /**
  * Checks the profile repository `<user>/<user>` step by step: the workflow file, its latest
  * run, why that run failed, and finally the snapshot and cards in `outputDir`. Stops at the
- * first thing that isn't done yet. Uses up to 5 requests of GitHub's 60 an hour, plus one per
- * extra job when a run has several.
+ * first thing that isn't done yet. Uses up to 5 requests, plus one per extra job when a run
+ * has several.
  */
 export function checkSetup(user: string, branch: string, outputDir: string, fetch: Fetch): Promise<CheckResult> {
   const repo = `/repos/${user}/${user}`;

@@ -4,10 +4,20 @@
  * The Action posts `{ id, version, theme }` once per run, where `id` is a pseudonymous
  * SHA-256 hex of the repository ID. Runs are daily, so we keep one row per (id, ISO week)
  * and only ever report counts of distinct ids, never hits.
+ *
+ * It also serves `GET /gh/<path>`, the selector page's read-only GitHub proxy (./proxy.ts).
  */
+
+import { proxy, type Deps } from './proxy';
+
+export type { Deps } from './proxy';
 
 export interface Env {
   DB: D1Database;
+  /** The owner's GitHub token for /gh: a secret (`wrangler secret put GITHUB_TOKEN`). Unset, /gh answers 503. */
+  GITHUB_TOKEN?: string;
+  /** The per-IP limit for /gh (`[[ratelimits]]` in wrangler.toml); skipped when absent. */
+  CHECK_LIMIT?: RateLimit;
 }
 
 interface Ping {
@@ -39,9 +49,16 @@ export function isoWeek(now: Date): string {
   return `${year}-W${String(week).padStart(2, '0')}`;
 }
 
-/** Routes one request. `now` is injected so the ISO week is deterministic in tests. */
-export async function handle(request: Request, env: Env, now: Date): Promise<Response> {
-  const route = ROUTES.get(new URL(request.url).pathname);
+/**
+ * Routes one request. `now` is injected so the ISO week is deterministic in tests, and `deps`
+ * so tests answer for GitHub.
+ */
+export async function handle(request: Request, env: Env, now: Date, deps: Deps = {}): Promise<Response> {
+  const { pathname } = new URL(request.url);
+  if (pathname.startsWith('/gh/')) {
+    return proxy(request, env, deps);
+  }
+  const route = ROUTES.get(pathname);
   if (!route) {
     return new Response('Not Found', { status: 404 });
   }

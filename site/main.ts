@@ -13,7 +13,16 @@ import {
   type ProfileRepoLinks,
   type SetupConfig,
 } from '../src/snippets/index';
-import { checkSetup, lookupProfileRepo, type CheckResult, type Fetch, type RepoLookup, type Trouble } from './check';
+import {
+  checkSetup,
+  lookupProfileRepo,
+  proxied,
+  whenTypingStops,
+  type CheckResult,
+  type Fetch,
+  type RepoLookup,
+  type Trouble,
+} from './check';
 import sample from './sample-snapshot.json';
 import { applyControl } from './state';
 
@@ -168,23 +177,25 @@ document.addEventListener('click', async (e) => {
 
 const USERNAME_KEY = 'better-github-profile:username';
 const NO_USER_HINT = 'Enter your username to get direct links';
-/** A GitHub API lookup waits this long after the last keystroke. */
-const LOOKUP_DELAY_MS = 500;
 
 const usernameInput = el<HTMLInputElement>('#username');
 const userStatus = el('#user-status');
 const checkButton = el<HTMLButtonElement>('#check-setup');
 const checkResult = el('#check-result');
 
-const api: Fetch = (url, init) => fetch(url, init);
+/** Through the usage Worker's GitHub proxy, else direct. `fetch` is read per call, not captured. */
+const api: Fetch = proxied((url, init) => fetch(url, init));
 
 /** The trimmed input; links need it to pass `isGitHubUsername`. */
 let username = '';
-/** The lookup for `username`: null while there is none to make. */
+/** The lookup for `username`: null while there is none (yet) to make. */
 let lookup: RepoLookup | 'pending' | null = null;
 /** Settled lookups (found or missing) per lowercased username; troubles are retried. */
 const lookups = new Map<string, RepoLookup>();
-let lookupTimer = 0;
+/** Lookups in flight per lowercased username, so a name is never asked for twice at once. */
+const inFlight = new Map<string, Promise<RepoLookup>>();
+/** The name is looked up on Enter, on leaving the field, or after a pause: never per keystroke. */
+const typingPause = whenTypingStops(() => void lookUp());
 
 /** `<owner>/<owner>` and the branch the links use; null without a valid username. */
 function repoTarget(): { owner: string; branch: string } | null {
@@ -222,7 +233,7 @@ function retryButton(label: string): HTMLButtonElement {
 }
 
 function troubleText(t: Trouble): string {
-  if (t.kind === 'rate-limited') return 'GitHub’s limit of 60 checks an hour was reached; try again later.';
+  if (t.kind === 'rate-limited') return 'GitHub’s hourly limit was reached; try again later.';
   if (t.kind === 'network-error') return 'Couldn’t reach GitHub. Check your connection and try again.';
   return `GitHub answered HTTP ${t.status}. Try again later.`;
 }
@@ -256,6 +267,8 @@ function renderUserStatus(): void {
   usernameInput.removeAttribute('aria-invalid');
   if (username === '') {
     userStatus.replaceChildren(`${NO_USER_HINT}.`);
+  } else if (typingPause.typing && lookup === null) {
+    userStatus.replaceChildren('Looking up when you stop typing…');
   } else if (!isGitHubUsername(username)) {
     usernameInput.setAttribute('aria-invalid', 'true');
     userStatus.dataset.tone = 'err';
@@ -294,20 +307,37 @@ function renderUserStatus(): void {
   }
 }
 
+/** One GitHub lookup of `user`'s profile repository, shared by everyone asking meanwhile. */
+function fetchLookup(user: string): Promise<RepoLookup> {
+  const key = user.toLowerCase();
+  let pending = inFlight.get(key);
+  if (pending === undefined) {
+    pending = lookupProfileRepo(user, api)
+      .then((result) => {
+        if (result.kind === 'found' || result.kind === 'missing') lookups.set(key, result);
+        return result;
+      })
+      .finally(() => inFlight.delete(key));
+    inFlight.set(key, pending);
+  }
+  return pending;
+}
+
 /** Looks up the current username's profile repository now, from the cache when settled. */
 async function lookUp(): Promise<RepoLookup | null> {
-  window.clearTimeout(lookupTimer);
   const user = username;
-  if (!isGitHubUsername(user)) return null;
-  const key = user.toLowerCase();
-  let result = lookups.get(key);
+  typingPause.markSettled(user);
+  if (!isGitHubUsername(user)) {
+    renderUserStatus();
+    return null;
+  }
+  let result = lookups.get(user.toLowerCase());
   if (result === undefined) {
     lookup = 'pending';
     renderUserStatus();
-    result = await lookupProfileRepo(user, api);
-    if (result.kind === 'found' || result.kind === 'missing') lookups.set(key, result);
+    result = await fetchLookup(user);
   }
-  if (username !== user) return null; // typed on meanwhile
+  if (username !== user) return null; // a late answer for a name no longer in the box
   lookup = result;
   renderUserStatus();
   renderRepoLinks();
@@ -319,6 +349,7 @@ function clearCheck(): void {
   checkResult.replaceChildren();
 }
 
+/** Takes the box's value; a name looked up before shows its answer at once. */
 function setUsername(value: string): void {
   username = value.trim();
   try {
@@ -327,15 +358,21 @@ function setUsername(value: string): void {
     // Storage blocked (private mode, policy): the page still works, it just forgets.
   }
   clearCheck();
-  window.clearTimeout(lookupTimer);
-  const cached = lookups.get(username.toLowerCase());
-  lookup = !isGitHubUsername(username) ? null : (cached ?? 'pending');
-  if (lookup === 'pending') lookupTimer = window.setTimeout(() => void lookUp(), LOOKUP_DELAY_MS);
+  lookup = (isGitHubUsername(username) && lookups.get(username.toLowerCase())) || null;
   renderUserStatus();
   renderRepoLinks();
 }
 
-usernameInput.addEventListener('input', () => setUsername(usernameInput.value));
+usernameInput.addEventListener('input', () => {
+  if (usernameInput.value.trim() === username) return; // e.g. a trailing space
+  typingPause.typed(usernameInput.value.trim());
+  setUsername(usernameInput.value);
+});
+// `change`: leaving the field (and Enter, in most browsers) after an edit.
+usernameInput.addEventListener('change', () => typingPause.commit(username));
+usernameInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.isComposing) typingPause.commit(username);
+});
 
 // --- Step 3: check setup ---
 
@@ -472,3 +509,5 @@ el('#token-help').textContent = TOKEN_HELP;
 el('#workflow-path').textContent = WORKFLOW_PATH;
 setUsername(savedUsername);
 render();
+// A saved name is a finished one: look it up now.
+if (username !== '') void lookUp();
