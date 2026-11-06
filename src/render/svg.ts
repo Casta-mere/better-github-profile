@@ -39,19 +39,22 @@ const ASCII_WIDTHS = [
 ];
 
 /**
- * Estimated rendered width of `s` in px. Slightly generous (the system font on macOS is a
- * little wider than Helvetica), so estimated layouts err towards more space, not overlap.
+ * Estimated rendered width of `s` in px. Calibrated in Chrome on macOS against the
+ * mockups: the system font's digits and lowercase match Helvetica within 1%. Bold letters
+ * are wider, bold digits are not. A 2% margin keeps estimated layouts from overlapping.
  */
 export function textWidth(s: string, size: number, bold = false): number {
   let em = 0;
   for (const ch of s) {
     const c = ch.codePointAt(0)!;
-    if (c >= 32 && c <= 126) em += ASCII_WIDTHS[c - 32] / 1000;
-    else if (ch === '·') em += 0.278;
-    else if (c >= 0x2e80) em += 1; // CJK and other full-width scripts
-    else em += 0.9; // symbols such as ★ come from a fallback font
+    let w: number;
+    if (c >= 32 && c <= 126) w = ASCII_WIDTHS[c - 32] / 1000;
+    else if (ch === '·') w = 0.278;
+    else if (c < 0x2000) w = 0.6; // accented Latin, Greek, Cyrillic
+    else w = 1; // symbols such as ★ (from a fallback font), CJK
+    em += bold && /\p{L}/u.test(ch) ? w * 1.08 : w;
   }
-  return em * size * (bold ? 1.12 : 1.05);
+  return em * size * 1.02;
 }
 
 /** Cuts `s` and appends `…` so that it fits in `max` px. */

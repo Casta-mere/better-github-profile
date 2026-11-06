@@ -1,6 +1,7 @@
 import type { Mode, Snapshot, ThemeName } from '../snapshot/types';
-import { defineTheme, unknownCard, type Theme } from './theme';
+import { unknownCard, type Theme } from './theme';
 import { native } from './themes/native';
+import { stripTheme } from './themes/strip';
 
 export type { RenderOptions, Theme } from './theme';
 export { topLanguages, type LanguageSlice } from './languages';
@@ -8,7 +9,7 @@ export { escapeXml, fmtInt, fmtPct } from './svg';
 
 export const THEMES: Record<ThemeName, Theme> = {
   native,
-  strip: defineTheme('strip', {}), // implemented in the next task
+  strip: stripTheme,
 };
 
 export interface RenderedCard {
