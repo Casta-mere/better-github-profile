@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>better-github-profile</title>
+    <meta name="description" content="Pick a theme for your GitHub profile stats cards, then copy the workflow and README markup." />
+    <link rel="icon" type="image/svg+xml" href="./logo.svg" />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container site-header-inner">
+        <a class="brand" href="./">
+          <img src="./logo.svg" width="32" height="32" alt="" />
+          <span class="wordmark">better<span class="dash">-</span>github<span class="dash">-</span>profile</span>
+        </a>
+        <a class="header-link" href="https://github.com/casta-mere/better-github-profile">GitHub</a>
+      </div>
+    </header>
+
+    <main class="container">
+      <p class="lede">
+        Stats cards for your GitHub profile README. A workflow in your profile repo rebuilds them daily and commits the
+        SVG files, so there is nothing to host. Pick a look, then follow the three steps.
+      </p>
+
+      <div class="layout">
+        <form id="controls" class="box controls" autocomplete="off">
+          <fieldset class="group">
+            <legend>Theme</legend>
+            <div class="segmented">
+              <label><input type="radio" name="theme" value="native" data-control="theme" checked /><span>native</span></label>
+              <label><input type="radio" name="theme" value="strip" data-control="theme" /><span>strip</span></label>
+            </div>
+          </fieldset>
+
+          <fieldset class="group">
+            <legend>Cards</legend>
+            <div id="cards" class="checks"></div>
+          </fieldset>
+
+          <fieldset class="group">
+            <legend>Data</legend>
+            <label class="switch">
+              <input type="checkbox" role="switch" name="includePrivate" data-control="includePrivate" checked />
+              <span class="track" aria-hidden="true"></span>
+              <span>Include private work</span>
+            </label>
+            <label class="switch">
+              <input type="checkbox" role="switch" name="includeForks" data-control="includeForks" />
+              <span class="track" aria-hidden="true"></span>
+              <span>Include forks</span>
+            </label>
+            <label class="field">
+              <span>Exclude repos</span>
+              <input type="text" name="excludeRepos" data-control="excludeRepos" placeholder="dotfiles, old-site" spellcheck="false" />
+            </label>
+            <label class="field">
+              <span>Exclude languages</span>
+              <input type="text" name="excludeLangs" data-control="excludeLangs" placeholder="HTML, Jupyter Notebook" spellcheck="false" />
+            </label>
+            <p class="note">
+              Comma-separated. The preview uses fixed sample data, so exclusions only change the workflow.
+            </p>
+          </fieldset>
+
+          <fieldset class="group">
+            <legend>Usage ping</legend>
+            <label class="switch">
+              <input type="checkbox" role="switch" name="telemetry" data-control="telemetry" checked />
+              <span class="track" aria-hidden="true"></span>
+              <span>Usage ping</span>
+            </label>
+            <p class="note">
+              Sends a hash of your repo ID (pseudonymous, not anonymous), the version and the theme, once per run. Turn
+              off to send nothing.
+            </p>
+          </fieldset>
+        </form>
+
+        <div class="main-col">
+          <section class="box" aria-labelledby="preview-title">
+            <div class="box-header">
+              <h2 id="preview-title">Preview</h2>
+              <div class="segmented small" role="radiogroup" aria-label="Preview mode">
+                <label><input type="radio" name="mode" value="light" /><span>Light</span></label>
+                <label><input type="radio" name="mode" value="dark" /><span>Dark</span></label>
+              </div>
+            </div>
+            <div id="preview" class="preview"></div>
+          </section>
+
+          <ol class="steps">
+            <li class="box step">
+              <div class="box-header">
+                <h2><span class="num">1</span><span id="token-help"></span></h2>
+                <button type="button" class="btn" data-copy-text="STATS_TOKEN" aria-label="Copy the secret name STATS_TOKEN">
+                  Copy name
+                </button>
+              </div>
+            </li>
+            <li class="box step">
+              <div class="box-header">
+                <h2><span class="num">2</span><span>Save this as <code id="workflow-path"></code></span></h2>
+                <button type="button" class="btn" data-copy-from="workflow" aria-label="Copy the workflow">Copy</button>
+              </div>
+              <pre><code id="workflow"></code></pre>
+            </li>
+            <li class="box step">
+              <div class="box-header">
+                <h2><span class="num">3</span><span>Paste into <code>README.md</code></span></h2>
+                <button type="button" class="btn" data-copy-from="readme" aria-label="Copy the README markup">Copy</button>
+              </div>
+              <pre><code id="readme"></code></pre>
+            </li>
+          </ol>
+        </div>
+      </div>
+    </main>
+
+    <footer class="container site-footer">
+      The preview renders a fixed sample snapshot with the same code the Action runs.
+    </footer>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
