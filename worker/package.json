@@ -2,7 +2,7 @@
   "name": "better-github-profile-usage",
   "version": "0.0.0",
   "private": true,
-  "description": "Usage counter Worker for better-github-profile: POST /ping, GET /stats, GET /badge",
+  "description": "Worker for better-github-profile: usage counter (POST /ping, GET /stats, GET /badge), the setup check's GitHub proxy (GET /gh/*) and Sign in with GitHub (GET /auth/start, GET /auth/callback)",
   "type": "module",
   "scripts": {
     "test": "vitest run",
