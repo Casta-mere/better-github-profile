@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { THEMES } from '../src/render/index';
+import { isGitHubUsername, profileRepoLinks, rawFileUrl, tokenUrl } from '../src/snippets/links';
 import { escapeMarkdownAlt, readmeSnippet } from '../src/snippets/readme';
 import { DEFAULT_SETUP, TOKEN_HELP, WORKFLOW_PATH, workflowYaml, type SetupConfig } from '../src/snippets/workflow';
 
@@ -177,4 +178,75 @@ it('TOKEN_HELP names the scopes', () => {
   expect(TOKEN_HELP).toContain('read:user');
   expect(TOKEN_HELP).toContain('repo');
   expect(TOKEN_HELP).toContain('STATS_TOKEN');
+});
+
+describe('isGitHubUsername', () => {
+  it('accepts letters, digits and single inner hyphens, up to 39 characters', () => {
+    for (const u of ['Casta-mere', 'a', 'octo-cat-42', '0x', 'a'.repeat(39)]) expect(isGitHubUsername(u), u).toBe(true);
+  });
+
+  it('rejects empty, leading/trailing/double hyphens, other characters and 40+ characters', () => {
+    for (const u of ['', '-a', 'a-', 'a--b', 'a_b', 'a.b', 'a b', 'ä', 'a/b', 'a'.repeat(40)]) {
+      expect(isGitHubUsername(u), u).toBe(false);
+    }
+  });
+});
+
+describe('tokenUrl', () => {
+  it('asks for read:user and repo when private work is included', () => {
+    expect(tokenUrl(DEFAULT_SETUP)).toBe(
+      'https://github.com/settings/tokens/new?scopes=read:user,repo&description=better-github-profile',
+    );
+  });
+
+  it('asks for read:user only when private work is left out', () => {
+    expect(tokenUrl(setup({ includePrivate: false }))).toBe(
+      'https://github.com/settings/tokens/new?scopes=read:user&description=better-github-profile',
+    );
+  });
+});
+
+describe('profileRepoLinks', () => {
+  const links = profileRepoLinks('Casta-mere', 'main');
+
+  it('points into <user>/<user>', () => {
+    expect(links.repo).toBe('https://github.com/Casta-mere/Casta-mere');
+    expect(links.secretNew).toBe('https://github.com/Casta-mere/Casta-mere/settings/secrets/actions/new');
+    expect(links.workflowPage).toBe('https://github.com/Casta-mere/Casta-mere/actions/workflows/profile-cards.yml');
+    expect(links.readmeEdit).toBe('https://github.com/Casta-mere/Casta-mere/edit/main/README.md');
+    expect(links.newRepo).toBe('https://github.com/new?name=Casta-mere');
+  });
+
+  it('opens a new-file page at WORKFLOW_PATH on the branch, prefilled with the workflow', () => {
+    const yaml = workflowYaml(DEFAULT_SETUP);
+    const url = new URL(links.workflowNew(yaml));
+    expect(`${url.origin}${url.pathname}`).toBe('https://github.com/Casta-mere/Casta-mere/new/main');
+    expect(url.searchParams.get('filename')).toBe(WORKFLOW_PATH);
+    expect(url.searchParams.get('value')).toBe(yaml);
+    expect(links.workflowNew(yaml)).toContain(`&value=${encodeURIComponent(yaml)}`);
+  });
+
+  it('uses the given branch and keeps a slash in it as a path separator', () => {
+    const l = profileRepoLinks('octo', 'release/v 2');
+    expect(l.readmeEdit).toBe('https://github.com/octo/octo/edit/release/v%202/README.md');
+    expect(l.workflowNew('x')).toMatch(/^https:\/\/github\.com\/octo\/octo\/new\/release\/v%202\?filename=/);
+  });
+
+  it('rejects a username GitHub would not allow', () => {
+    expect(() => profileRepoLinks('a/b', 'main')).toThrow(/username/);
+  });
+});
+
+describe('rawFileUrl', () => {
+  it('points at raw.githubusercontent.com on the branch', () => {
+    expect(rawFileUrl('Casta-mere', 'main', 'cards/native-overview-light.svg')).toBe(
+      'https://raw.githubusercontent.com/Casta-mere/Casta-mere/main/cards/native-overview-light.svg',
+    );
+  });
+
+  it('percent-encodes each path segment', () => {
+    expect(rawFileUrl('octo', 'dev/x', 'my cards/a#b.svg')).toBe(
+      'https://raw.githubusercontent.com/octo/octo/dev/x/my%20cards/a%23b.svg',
+    );
+  });
 });

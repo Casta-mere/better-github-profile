@@ -22,7 +22,7 @@
     <main class="container">
       <p class="lede">
         Stats cards for your GitHub profile README. A workflow in your profile repo rebuilds them daily and commits the
-        SVG files, so there is nothing to host. Pick a look, then follow the three steps.
+        SVG files, so there is nothing to host. Pick a look, then follow the four steps.
       </p>
 
       <div class="layout">
@@ -91,25 +91,130 @@
             <div id="preview" class="preview"></div>
           </section>
 
+          <section class="box user-box" aria-labelledby="username-label">
+            <label id="username-label" for="username">Your GitHub username</label>
+            <input
+              id="username"
+              type="text"
+              name="username"
+              placeholder="octocat"
+              autocomplete="username"
+              autocapitalize="off"
+              spellcheck="false"
+              maxlength="39"
+              aria-describedby="user-status"
+            />
+            <p id="user-status" class="note user-status" aria-live="polite"></p>
+          </section>
+
           <ol class="steps">
             <li class="box step">
               <div class="box-header">
-                <h2><span class="num">1</span><span id="token-help"></span></h2>
-                <button type="button" class="btn" data-copy-text="STATS_TOKEN" aria-label="Copy the secret name STATS_TOKEN">
-                  Copy name
-                </button>
+                <h2><span class="num">1</span><span>Create a token and save it as a secret</span></h2>
+              </div>
+              <div class="step-body">
+                <p id="token-help" class="note"></p>
+                <ol class="substeps">
+                  <li id="step-1a" class="substep">
+                    <span class="sub">1a</span>
+                    <div>
+                      <p>
+                        <strong>Create the token.</strong>
+                        <a id="token-link" target="_blank" rel="noopener">Open GitHub&rsquo;s new token page</a>; the scopes
+                        it needs are already ticked: <code>read:user</code><span id="repo-scope">, <code>repo</code></span>.
+                        Click <strong>Generate token</strong> and copy the token.
+                      </p>
+                      <p class="tip">
+                        Tip: set <strong>Expiration</strong> to <strong>No expiration</strong>. If the token expires, the
+                        cards are kept but marked stale until you add a new one.
+                      </p>
+                    </div>
+                  </li>
+                  <li id="step-1b" class="substep optional">
+                    <span class="sub">1b</span>
+                    <div>
+                      <p>
+                        <span class="badge">optional</span>
+                        <strong>Only if you belong to an organization that uses SAML SSO</strong>, for example your
+                        employer. On <a href="https://github.com/settings/tokens" target="_blank" rel="noopener">github.com/settings/tokens</a>,
+                        open <strong>Configure SSO</strong> next to the token and <strong>Authorize</strong> the
+                        organization. Otherwise that organization&rsquo;s private contributions aren&rsquo;t counted as yours.
+                      </p>
+                      <p class="tip">
+                        GitHub Docs:
+                        <a
+                          href="https://docs.github.com/en/enterprise-cloud@latest/authentication/authenticating-with-single-sign-on/authorizing-a-personal-access-token-for-use-with-single-sign-on"
+                          target="_blank"
+                          rel="noopener"
+                          >Authorizing a personal access token for use with single sign-on</a
+                        >
+                      </p>
+                    </div>
+                  </li>
+                  <li id="step-1c" class="substep">
+                    <span class="sub">1c</span>
+                    <div>
+                      <p>
+                        <strong>Add the secret.</strong>
+                        <a data-repo-link="secretNew" target="_blank" rel="noopener">Open New repository secret</a> in your
+                        profile repository and fill in:
+                      </p>
+                      <dl class="secret">
+                        <dt>Name</dt>
+                        <dd>
+                          <code>STATS_TOKEN</code>
+                          <button type="button" class="btn" data-copy-text="STATS_TOKEN" aria-label="Copy the secret name STATS_TOKEN">
+                            Copy name
+                          </button>
+                        </dd>
+                        <dt>Value</dt>
+                        <dd>the token from <a href="#step-1a">1a</a></dd>
+                      </dl>
+                    </div>
+                  </li>
+                </ol>
               </div>
             </li>
             <li class="box step">
               <div class="box-header">
-                <h2><span class="num">2</span><span>Save this as <code id="workflow-path"></code></span></h2>
-                <button type="button" class="btn" data-copy-from="workflow" aria-label="Copy the workflow">Copy</button>
+                <h2><span class="num">2</span><span>Add the workflow</span></h2>
+                <div class="box-actions">
+                  <a id="workflow-new" class="btn btn-primary" data-repo-link="workflowNew" target="_blank" rel="noopener">
+                    Add workflow to <span data-repo-name>your profile repository</span>
+                  </a>
+                  <button type="button" class="btn" data-copy-from="workflow" aria-label="Copy the workflow">Copy</button>
+                </div>
+              </div>
+              <div class="step-body">
+                <p>
+                  The button opens GitHub&rsquo;s new-file page with the workflow filled in: click
+                  <strong>Commit changes</strong>. Or save it yourself as <code id="workflow-path"></code>.
+                </p>
               </div>
               <pre><code id="workflow"></code></pre>
             </li>
             <li class="box step">
               <div class="box-header">
-                <h2><span class="num">3</span><span>Paste into <code>README.md</code></span></h2>
+                <h2><span class="num">3</span><span>Run it and check</span></h2>
+              </div>
+              <div class="step-body">
+                <p>
+                  <a data-repo-link="workflowPage" target="_blank" rel="noopener">Run the workflow</a>: click
+                  <strong>Run workflow</strong> there, and wait about a minute. Then check the setup.
+                </p>
+                <div class="step-actions">
+                  <button type="button" id="check-setup" class="btn btn-primary">Check setup</button>
+                </div>
+                <div id="check-result" class="check-result" role="status" hidden></div>
+                <p class="note">
+                  The secret itself can&rsquo;t be checked: GitHub only shows secrets to a logged-in admin, so the check
+                  looks at the workflow run instead.
+                </p>
+              </div>
+            </li>
+            <li class="box step">
+              <div class="box-header">
+                <h2><span class="num">4</span><span>Paste into <code>README.md</code></span></h2>
                 <div class="box-actions">
                   <div class="segmented small" role="radiogroup" aria-label="README format">
                     <label>
@@ -123,6 +228,13 @@
                   </div>
                   <button type="button" class="btn" data-copy-from="readme" aria-label="Copy the README markup">Copy</button>
                 </div>
+              </div>
+              <div class="step-body">
+                <p>
+                  Once the check says the cards are ready, so the images exist:
+                  <a data-repo-link="readmeEdit" target="_blank" rel="noopener">Edit <code>README.md</code></a>, paste
+                  the markup and commit. GitHub can&rsquo;t fill in an edit, so copy the markup first.
+                </p>
               </div>
               <pre><code id="readme"></code></pre>
               <p id="readme-note" class="note step-note" hidden>
