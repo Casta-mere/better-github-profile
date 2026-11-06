@@ -24,6 +24,8 @@ GitHub profile stats cards, built by a GitHub Action in your own repo: correct n
   <img alt="strip theme" src="test/__snapshots__/strip/strip-strip-light.svg">
 </picture>
 
+Want to design one? Each theme is a folder in [`src/render/themes/`](src/render/themes/); [CONTRIBUTING.md](CONTRIBUTING.md#add-a-theme) shows how to add one, and [`docs/theme-ideas/`](docs/theme-ideas/) has designs waiting to be built.
+
 ## Quick start
 
 The [selector page](https://casta-mere.github.io/better-github-profile/) previews the themes and writes the setup for your choices. With the defaults, the setup is these three steps, all in your profile repository (the one named after your username).

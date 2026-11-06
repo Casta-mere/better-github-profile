@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Theme idea B: Terminal / neofetch</title>
+<style>
+  body{margin:0;padding:24px;font:14px/1.5 -apple-system,"Segoe UI",Helvetica,Arial,sans-serif;background:#f6f8fa;color:#1f2328}
+  header{max-width:880px;margin:0 auto 18px}
+  header h1{font-size:20px;margin:0 0 6px}
+  header p{margin:4px 0;color:#59636e}
+  header code{font-size:12.5px}
+  .pair{display:grid;grid-template-columns:1fr;border-radius:10px;overflow:hidden;border:1px solid #8884;width:max-content;max-width:100%;margin:0 auto}
+  .pair.side{grid-template-columns:1fr 1fr}
+  .stage{padding:22px;display:flex;gap:14px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+  .stage.light{background:#ffffff;--fg:#1f2328;--mut:#59636e;--bd:#d1d9e0;--card:#ffffff;--acc:#0969da;--trk:#eff2f5;--g1:#9be9a8;--g2:#40c463;--g3:#30a14e;--g4:#216e39;--gold:#bf8700;--glass:rgba(255,255,255,.55);--blob1:#a5c8ff;--blob2:#ffc9e0;--blob3:#c8f5d8}
+  .stage.dark{background:#0d1117;--fg:#e6edf3;--mut:#9198a1;--bd:#3d444d;--card:#0d1117;--acc:#4493f8;--trk:#21262d;--g1:#0e4429;--g2:#006d32;--g3:#26a641;--g4:#39d353;--gold:#e3b341;--glass:rgba(22,27,34,.55);--blob1:#1f4fa8;--blob2:#7a2858;--blob3:#1d6b45}
+  .tag{font:600 11px system-ui;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);width:100%;margin:-8px 0 2px}
+  .sans{font-family:-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;color:var(--fg)}
+  .mono{font-family:ui-monospace,"SF Mono",Menlo,monospace;color:var(--fg)}
+  .b{font:12px/1.55 ui-monospace,"SF Mono",Menlo,monospace;color:var(--fg);background:var(--card);border:1px solid var(--bd);border-radius:8px;width:680px;box-sizing:border-box;overflow:hidden}
+  .b .top{display:flex;gap:6px;padding:8px 12px;border-bottom:1px solid var(--bd);align-items:center}
+  .b .top i{width:9px;height:9px;border-radius:50%;opacity:.5}
+  .b .top span{margin-left:8px;color:var(--mut);font-size:11px}
+  .b .body{display:grid;grid-template-columns:170px 1fr;gap:18px;padding:14px 18px}
+  .b pre{margin:0;color:var(--g3);font-size:9.5px;line-height:1.15;opacity:.8}
+  .b .p{color:var(--g3)} .b .k{color:var(--acc)} .b .m{color:var(--mut)}
+  .b .ln{display:flex}.b .ln .k{width:110px;flex:none}
+  .b .heat{display:flex;gap:2px;margin:6px 0 2px}
+  .b .heat i{width:8px;height:8px;border-radius:2px}
+</style>
+</head>
+<body>
+<header>
+  <h1>B · Terminal / neofetch</h1>
+  <p>One card styled like a shell running <code>gh stats</code>: key/value lines, a heat strip of the last 26 weeks, and languages as text bars.</p>
+  <p><b>Data it needs:</b> the current snapshot is enough.</p>
+  <p>An HTML mockup of the idea, not a theme: a theme draws the same design as an SVG string (see <code>CONTRIBUTING.md</code>, "Add a theme"). The numbers come from the public test fixture, <code>test/fixtures/snapshot-casta-mere.json</code>.</p>
+</header>
+<div class="pair"><div class="stage light"></div><div class="stage dark"></div></div>
+<script>
+// From the public test fixture, test/fixtures/snapshot-casta-mere.json: calendar.weeks
+// (oldest to newest), and the top languages as topLanguages() returns them.
+const weeks=[1,18,8,4,1,4,0,0,1,2,10,2,4,28,12,12,3,13,13,11,14,3,20,22,30,23,6,7,9,15,8,16,5,43,20,21,18,66,11,3,21,19,2,25,42,22,9,1,0,13,54,76,4];
+const langs=[["HTML","#e34c26",42.2],["Python","#3572A5",31.5],["TypeScript","#3178c6",13.2],["TeX","#3D6117",5.4],["Shell","#89e051",1.9],["Other","#8b949e",5.8]];
+const max=Math.max(...weeks);
+const heat=weeks.slice(-26).map(w=>{const v=w==0?'var(--trk)':w<8?'var(--g1)':w<20?'var(--g2)':w<40?'var(--g3)':'var(--g4)';return `<i style="background:${v}"></i>`}).join('');
+const tbar=(p)=>{const n=Math.round(p/100*28);return '█'.repeat(n)+'<span class="m">'+'░'.repeat(Math.max(0,14-n))+'</span>'};
+const card=`
+ <div class="b">
+  <div class="top"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span>casta-mere — zsh</span></div>
+  <div class="body">
+   <pre>   ▄▄████▄▄
+ ▄██▀▀  ▀▀██▄
+██▀ ▄▄  ▄▄ ▀██
+██  ██  ██  ██
+██▄  ▀▀▀▀  ▄██
+ ▀██▄▄  ▄▄██▀
+   ▀▀████▀▀</pre>
+   <div>
+    <div><span class="p">❯</span> gh stats <span class="k">casta-mere</span></div>
+    <div class="m">────────────────────────────────────</div>
+    <div class="ln"><span class="k">user</span>Castamere · since 2021</div>
+    <div class="ln"><span class="k">contributions</span>2,383 all-time · 795 this year</div>
+    <div class="ln"><span class="k">repos</span>59 · ★ 21 · ⑂ 5</div>
+    <div class="ln"><span class="k">busiest week</span>${max} contributions</div>
+    <div class="ln"><span class="k">last 26 wks</span></div>
+    <div class="heat">${heat}</div>
+    <div class="ln"><span class="k">HTML</span>${tbar(42.2)} 42%</div>
+    <div class="ln"><span class="k">Python</span>${tbar(31.5)} 32%</div>
+    <div class="ln"><span class="k">TypeScript</span>${tbar(13.2)} 13%</div>
+    <div><span class="p">❯</span> <span style="opacity:.6">▍</span></div>
+   </div>
+  </div>
+ </div>`;
+document.querySelectorAll('.stage').forEach(s=>{s.innerHTML=`<div class="tag">${s.classList.contains('light')?'light':'dark'}</div>`+card});
+</script>
+</body>
+</html>

@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Theme idea D: Frosted glass</title>
+<style>
+  body{margin:0;padding:24px;font:14px/1.5 -apple-system,"Segoe UI",Helvetica,Arial,sans-serif;background:#f6f8fa;color:#1f2328}
+  header{max-width:880px;margin:0 auto 18px}
+  header h1{font-size:20px;margin:0 0 6px}
+  header p{margin:4px 0;color:#59636e}
+  header code{font-size:12.5px}
+  .pair{display:grid;grid-template-columns:1fr;border-radius:10px;overflow:hidden;border:1px solid #8884;width:max-content;max-width:100%;margin:0 auto}
+  .pair.side{grid-template-columns:1fr 1fr}
+  .stage{padding:22px;display:flex;gap:14px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+  .stage.light{background:#ffffff;--fg:#1f2328;--mut:#59636e;--bd:#d1d9e0;--card:#ffffff;--acc:#0969da;--trk:#eff2f5;--g1:#9be9a8;--g2:#40c463;--g3:#30a14e;--g4:#216e39;--gold:#bf8700;--glass:rgba(255,255,255,.55);--blob1:#a5c8ff;--blob2:#ffc9e0;--blob3:#c8f5d8}
+  .stage.dark{background:#0d1117;--fg:#e6edf3;--mut:#9198a1;--bd:#3d444d;--card:#0d1117;--acc:#4493f8;--trk:#21262d;--g1:#0e4429;--g2:#006d32;--g3:#26a641;--g4:#39d353;--gold:#e3b341;--glass:rgba(22,27,34,.55);--blob1:#1f4fa8;--blob2:#7a2858;--blob3:#1d6b45}
+  .tag{font:600 11px system-ui;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);width:100%;margin:-8px 0 2px}
+  .sans{font-family:-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;color:var(--fg)}
+  .mono{font-family:ui-monospace,"SF Mono",Menlo,monospace;color:var(--fg)}
+  .d{position:relative;width:820px;height:200px;border-radius:16px;overflow:hidden;border:1px solid color-mix(in srgb,var(--fg) 12%,transparent)}
+  .d .bl{position:absolute;border-radius:50%;filter:blur(40px);opacity:.55}
+  .d .glass{position:absolute;inset:0;background:var(--glass);backdrop-filter:blur(8px);display:grid;grid-template-columns:1.1fr 1.4fr 1fr;gap:0}
+  .d .col{padding:20px 22px;border-right:1px solid color-mix(in srgb,var(--fg) 10%,transparent)}
+  .d .col:last-child{border:0}
+  .d .who{font-size:17px;font-weight:700}.d .h{font-size:11px;color:var(--mut);margin-bottom:14px}
+  .d .kv{display:grid;grid-template-columns:1fr 1fr;gap:12px}.d .kv b{display:block;font-size:20px;font-variant-numeric:tabular-nums}.d .kv span{font-size:11px;color:var(--mut)}
+  .d .lab{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--mut);margin-bottom:8px}
+  .d svg{width:100%;height:110px;display:block}
+  .d .ring{display:flex;gap:14px;align-items:center}
+  .d .ring ul{list-style:none;margin:0;padding:0;font-size:11.5px;display:grid;gap:4px}
+  .d .ring li::before{content:"●";color:var(--c);margin-right:6px;opacity:.75}
+</style>
+</head>
+<body>
+<header>
+  <h1>D · Frosted glass</h1>
+  <p>Soft color blobs behind a blurred pane, in three columns: who you are, an activity curve and a language ring. Calm and modern, with color kept thin.</p>
+  <p><b>Data it needs:</b> the current snapshot is enough.</p>
+  <p>An HTML mockup of the idea, not a theme: a theme draws the same design as an SVG string (see <code>CONTRIBUTING.md</code>, "Add a theme"). The numbers come from the public test fixture, <code>test/fixtures/snapshot-casta-mere.json</code>. SVG has no <code>backdrop-filter</code>: blur the blobs themselves with an SVG <code>&lt;filter&gt;</code>.</p>
+</header>
+<div class="pair"><div class="stage light"></div><div class="stage dark"></div></div>
+<script>
+// From the public test fixture, test/fixtures/snapshot-casta-mere.json: calendar.weeks
+// (oldest to newest), and the top languages as topLanguages() returns them.
+const weeks=[1,18,8,4,1,4,0,0,1,2,10,2,4,28,12,12,3,13,13,11,14,3,20,22,30,23,6,7,9,15,8,16,5,43,20,21,18,66,11,3,21,19,2,25,42,22,9,1,0,13,54,76,4];
+const langs=[["HTML","#e34c26",42.2],["Python","#3572A5",31.5],["TypeScript","#3178c6",13.2],["TeX","#3D6117",5.4],["Other","#8b949e",7.7]];
+const max=Math.max(...weeks);
+// Smooth area path for the activity curve.
+const W=300,H=110;const pts=weeks.map((w,i)=>[i/(weeks.length-1)*W,H-6-(w/max)*(H-16)]);
+const path=`M0,${H} L${pts.map(p=>p.join(',')).join(' L')} L${W},${H} Z`;
+const line=`M${pts.map(p=>p.join(',')).join(' L')}`;
+// Language donut.
+let acc=0;const R=34,C=2*Math.PI*R;
+const donut=langs.map(l=>{const len=l[2]/100*C;const s=`<circle r="${R}" cx="44" cy="44" fill="none" stroke="${l[1]}" stroke-opacity=".75" stroke-width="11" stroke-dasharray="${len-2} ${C}" stroke-dashoffset="${-acc}" transform="rotate(-90 44 44)"/>`;acc+=len;return s}).join('');
+const card=`<div class="d sans">
+ <div class="bl" style="width:260px;height:200px;left:-40px;top:-60px;background:var(--blob1)"></div>
+ <div class="bl" style="width:240px;height:200px;left:340px;top:60px;background:var(--blob2)"></div>
+ <div class="bl" style="width:220px;height:180px;right:-40px;top:-40px;background:var(--blob3)"></div>
+ <div class="glass">
+  <div class="col"><div class="who">Castamere</div><div class="h">@casta-mere · since 2021</div>
+   <div class="kv"><div><b>2,383</b><span>contributions</span></div><div><b>795</b><span>this year</span></div><div><b>59</b><span>repos</span></div><div><b>21</b><span>stars</span></div></div></div>
+  <div class="col"><div class="lab">Last 52 weeks</div>
+   <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><path d="${path}" fill="var(--acc)" fill-opacity=".14"/><path d="${line}" fill="none" stroke="var(--acc)" stroke-opacity=".7" stroke-width="1.5" stroke-linejoin="round"/></svg></div>
+  <div class="col"><div class="lab">Languages</div><div class="ring"><svg viewBox="0 0 88 88" style="width:88px;height:88px">${donut}</svg>
+   <ul>${langs.slice(0,4).map(l=>`<li style="--c:${l[1]}">${l[0]} <span style="color:var(--mut)">${Math.round(l[2])}%</span></li>`).join('')}</ul></div></div>
+ </div></div>`;
+document.querySelectorAll('.stage').forEach(s=>{s.innerHTML=`<div class="tag">${s.classList.contains('light')?'light':'dark'}</div>`+card});
+</script>
+</body>
+</html>

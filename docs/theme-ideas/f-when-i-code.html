@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Theme idea F: "When I code"</title>
+<style>
+  body{margin:0;padding:24px;font:14px/1.5 -apple-system,"Segoe UI",Helvetica,Arial,sans-serif;background:#f6f8fa;color:#1f2328}
+  header{max-width:880px;margin:0 auto 18px}
+  header h1{font-size:20px;margin:0 0 6px}
+  header p{margin:4px 0;color:#59636e}
+  header code{font-size:12.5px}
+  .pair{display:grid;grid-template-columns:1fr;border-radius:10px;overflow:hidden;border:1px solid #8884;width:max-content;max-width:100%;margin:0 auto}
+  .pair.side{grid-template-columns:1fr 1fr}
+  .stage{padding:22px;display:flex;gap:14px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+  .stage.light{background:#ffffff;--fg:#1f2328;--mut:#59636e;--bd:#d1d9e0;--card:#ffffff;--acc:#0969da;--trk:#eff2f5;--g1:#9be9a8;--g2:#40c463;--g3:#30a14e;--g4:#216e39;--gold:#bf8700;--glass:rgba(255,255,255,.55);--blob1:#a5c8ff;--blob2:#ffc9e0;--blob3:#c8f5d8}
+  .stage.dark{background:#0d1117;--fg:#e6edf3;--mut:#9198a1;--bd:#3d444d;--card:#0d1117;--acc:#4493f8;--trk:#21262d;--g1:#0e4429;--g2:#006d32;--g3:#26a641;--g4:#39d353;--gold:#e3b341;--glass:rgba(22,27,34,.55);--blob1:#1f4fa8;--blob2:#7a2858;--blob3:#1d6b45}
+  .tag{font:600 11px system-ui;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);width:100%;margin:-8px 0 2px}
+  .sans{font-family:-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;color:var(--fg)}
+  .mono{font-family:ui-monospace,"SF Mono",Menlo,monospace;color:var(--fg)}
+  .f{width:820px;border:1px solid var(--bd);border-radius:6px;padding:16px 20px;box-sizing:border-box;display:grid;grid-template-columns:1.25fr 1fr;gap:26px}
+  .f h5{margin:0 0 10px;font-size:13px;font-weight:600}.f h5 em{font-style:normal;font-weight:400;color:var(--mut);margin-left:6px;font-size:11.5px}
+  .f .cal{display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,7px);gap:2px}
+  .f .cal i{width:7px;height:7px;border-radius:1.5px}
+  .f .pc{display:grid;grid-template-columns:24px repeat(24,1fr);gap:2px;align-items:center;font-size:9.5px;color:var(--mut)}
+  .f .pc i{display:block;border-radius:50%;background:var(--acc);margin:auto}
+  .f .facts{display:flex;gap:22px;margin-top:12px;font-size:11.5px;color:var(--mut)}.f .facts b{color:var(--fg);font-size:14px;display:block}
+</style>
+</head>
+<body>
+<header>
+  <h1>F · "When I code"</h1>
+  <p>A day-by-day calendar next to an hour-of-day punch card: personality from habits rather than totals. Good when star counts are modest.</p>
+  <p><b>Data it needs:</b> commit counts by hour of day and weekday, and daily calendar cells: <b>not in the snapshot</b>. Needs a schema change (<code>schemaVersion: 2</code>) first.</p>
+  <p>An HTML mockup of the idea, not a theme: a theme draws the same design as an SVG string (see <code>CONTRIBUTING.md</code>, "Add a theme"). The numbers come from the public test fixture, <code>test/fixtures/snapshot-casta-mere.json</code>. The day cells, favorite day and punch card are invented from the weekly totals to show the shape.</p>
+</header>
+<div class="pair"><div class="stage light"></div><div class="stage dark"></div></div>
+<script>
+// From the public test fixture, test/fixtures/snapshot-casta-mere.json: calendar.weeks
+// (oldest to newest), and the top languages as topLanguages() returns them.
+const weeks=[1,18,8,4,1,4,0,0,1,2,10,2,4,28,12,12,3,13,13,11,14,3,20,22,30,23,6,7,9,15,8,16,5,43,20,21,18,66,11,3,21,19,2,25,42,22,9,1,0,13,54,76,4];
+const langs=[["HTML","#e34c26",42.2],["Python","#3572A5",31.5],["TypeScript","#3178c6",13.2],["TeX","#3D6117",5.4],["Other","#8b949e",7.7]];
+const max=Math.max(...weeks);
+// Day cells invented from the weekly totals (spread across days deterministically).
+let cal='';const lvl=v=>v==0?'var(--trk)':v<2?'var(--g1)':v<4?'var(--g2)':v<7?'var(--g3)':'var(--g4)';
+weeks.forEach((w,wi)=>{for(let d=0;d<7;d++){const share=[.08,.18,.17,.17,.16,.14,.10][d];const v=Math.round(w*share*((wi*7+d)%3==0?1.3:.85));cal+=`<i style="background:${lvl(v)}"></i>`}});
+// Punch card, invented: weekday rows by 24 hours.
+const days=['Mon','Wed','Fri','Sun'];const prof=h=>Math.max(0,Math.exp(-((h-15)**2)/18)*.9+Math.exp(-((h-22.5)**2)/5)*.75+(h>=10&&h<=12?.35:0));
+let pc='';days.forEach((d,di)=>{pc+=`<span>${d}</span>`;for(let h=0;h<24;h++){const s=prof(h)*(di==3?.5:1);pc+=`<i style="width:${Math.max(2,s*11)}px;height:${Math.max(2,s*11)}px;opacity:${s<.05?.15:.65}"></i>`}});
+pc+=`<span></span>`+Array.from({length:24},(_,h)=>`<span style="text-align:center">${h%6==0?h:''}</span>`).join('');
+const card=`<div class="f sans">
+ <div><h5>795 contributions<em>last 12 months</em></h5><div class="cal">${cal}</div>
+  <div class="facts"><div><b>${max}</b>busiest week</div><div><b>Tue</b>favorite day</div><div><b>45%</b>private work</div></div></div>
+ <div><h5>When I code<em>local time</em></h5><div class="pc">${pc}</div>
+  <div class="facts"><div><b>3 pm</b>peak hour</div><div><b>night owl</b>22–23h bump</div></div></div>
+</div>`;
+document.querySelectorAll('.stage').forEach(s=>{s.innerHTML=`<div class="tag">${s.classList.contains('light')?'light':'dark'}</div>`+card});
+</script>
+</body>
+</html>
