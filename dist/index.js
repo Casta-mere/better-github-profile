@@ -21284,7 +21284,7 @@ async function update(cfg, deps) {
 }
 
 // src/action/telemetry.ts
-var TELEMETRY_URL = "";
+var TELEMETRY_URL = "https://better-github-profile-usage.castamerego.workers.dev/ping";
 async function pingId(repoId) {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`better-github-profile:${repoId}`));
   return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");

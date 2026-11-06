@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { TELEMETRY_URL } from '../src/action/telemetry';
 import { DEFAULT_SETUP, readmeSnippet, TOKEN_HELP, WORKFLOW_PATH, workflowYaml } from '../src/snippets/index';
 
 const root = new URL('../', import.meta.url);
@@ -63,7 +64,12 @@ describe('README', () => {
     expect(readme.replace(/pseudonymous, not anonymous/g, '')).not.toMatch(/anonymous|one-way/i);
   });
 
-  it('keeps the used-by badge as a placeholder while TELEMETRY_URL is empty', () => {
-    expect(readme).toContain('<!-- used-by badge: added after the Worker is deployed -->');
+  it('shows the used-by badge from the same Worker the ping goes to (a placeholder while TELEMETRY_URL is empty)', () => {
+    if (TELEMETRY_URL === '') {
+      expect(readme).toContain('<!-- used-by badge: added after the Worker is deployed -->');
+      return;
+    }
+    const badge = `${new URL(TELEMETRY_URL).origin}/badge`;
+    expect(readme).toContain(`https://img.shields.io/endpoint?url=${encodeURIComponent(badge)}`);
   });
 });

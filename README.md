@@ -2,7 +2,7 @@
 
 GitHub profile stats cards, built by a GitHub Action in your own repo: correct numbers, light and dark versions, and nothing to host.
 
-<!-- used-by badge: added after the Worker is deployed -->
+[![used by](https://img.shields.io/endpoint?url=https%3A%2F%2Fbetter-github-profile-usage.castamerego.workers.dev%2Fbadge)](#privacy)
 
 ## Themes
 

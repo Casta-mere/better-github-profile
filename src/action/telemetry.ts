@@ -2,11 +2,10 @@ import type { Fetch } from '../collect/graphql';
 import type { ThemeName } from '../snapshot/types';
 
 /**
- * The usage counter's `POST /ping` endpoint. Empty means no ping is sent. It stays empty
- * until the owner deploys the Worker: Worker URLs include the account's own subdomain, so a
- * guessed host could belong to someone else.
+ * The usage counter's `POST /ping` endpoint (the Worker in `worker/`). Empty means no ping
+ * is sent.
  */
-export const TELEMETRY_URL = '';
+export const TELEMETRY_URL: string = 'https://better-github-profile-usage.castamerego.workers.dev/ping';
 
 /**
  * SHA-256 hex of `better-github-profile:<repoId>`. Pseudonymous, not anonymous: repo IDs
