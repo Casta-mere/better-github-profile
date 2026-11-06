@@ -526,6 +526,11 @@ a[aria-disabled='true']:not(.btn) {
   cursor: not-allowed;
 }
 
+/* A shown-per-state element: `a.btn` and flex rows set `display`, which would beat `hidden`. */
+[data-workflow-show][hidden] {
+  display: none;
+}
+
 .link-button {
   padding: 0;
   border: 0;
@@ -776,6 +781,23 @@ a[aria-disabled='true']:not(.btn) {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+}
+
+/* Step 2: the workflow already matches */
+
+.workflow-same {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  color: var(--tone);
+  font-weight: 600;
+}
+
+.quiet-link {
+  color: var(--fg-muted);
+  font-size: 12px;
+  font-weight: 400;
 }
 
 /* Setup check result */

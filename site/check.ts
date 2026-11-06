@@ -51,18 +51,18 @@ class Stop extends Error {
 
 /** A JSON object's fields, or `{}` for anything else. */
 type Json = Record<string, unknown>;
-const fields = (x: unknown): Json => (typeof x === 'object' && x !== null && !Array.isArray(x) ? (x as Json) : {});
+export const fields = (x: unknown): Json => (typeof x === 'object' && x !== null && !Array.isArray(x) ? (x as Json) : {});
 const text = (x: unknown): string | null => (typeof x === 'string' && x !== '' ? x : null);
 
 /** A body that doesn't have the shape GitHub documents. */
-const badBody = () => new Stop({ kind: 'http-error', status: 200 });
+export const badBody = () => new Stop({ kind: 'http-error', status: 200 });
 
 /**
  * GET an API path: the parsed body, or null for a 404. Throws `Stop` for the rate limit, a
  * network error or any other status. `no-cache` makes the browser revalidate, so a re-check
  * sees new runs; on direct calls GitHub's ETag makes an unchanged answer (304) free.
  */
-async function get(fetch: Fetch, path: string): Promise<unknown> {
+export async function get(fetch: Fetch, path: string): Promise<unknown> {
   let res: Response;
   try {
     res = await fetch(`${API}${path}`, { headers: { Accept: 'application/vnd.github+json' }, cache: 'no-cache' });
@@ -151,7 +151,8 @@ export function whenTypingStops(settle: (value: string) => void, pauseMs: number
   };
 }
 
-async function guard<T>(work: () => Promise<T>): Promise<T | Trouble> {
+/** Runs `work`, turning a `Stop` into its trouble result. */
+export async function guard<T>(work: () => Promise<T>): Promise<T | Trouble> {
   try {
     return await work();
   } catch (err) {

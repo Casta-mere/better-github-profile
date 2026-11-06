@@ -226,9 +226,17 @@ describe('profileRepoLinks', () => {
     expect(links.workflowNew(yaml)).toContain(`&value=${encodeURIComponent(yaml)}`);
   });
 
+  it('opens the editor of the existing workflow at WORKFLOW_PATH on the branch', () => {
+    expect(links.workflowEdit).toBe(
+      'https://github.com/Casta-mere/Casta-mere/edit/main/.github/workflows/profile-cards.yml',
+    );
+    expect(links.workflowEdit.endsWith(`/edit/main/${WORKFLOW_PATH}`)).toBe(true);
+  });
+
   it('uses the given branch and keeps a slash in it as a path separator', () => {
     const l = profileRepoLinks('octo', 'release/v 2');
     expect(l.readmeEdit).toBe('https://github.com/octo/octo/edit/release/v%202/README.md');
+    expect(l.workflowEdit).toBe('https://github.com/octo/octo/edit/release/v%202/.github/workflows/profile-cards.yml');
     expect(l.workflowNew('x')).toMatch(/^https:\/\/github\.com\/octo\/octo\/new\/release\/v%202\?filename=/);
   });
 

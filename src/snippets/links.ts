@@ -23,6 +23,8 @@ export interface ProfileRepoLinks {
   secretNew: string;
   /** GitHub's new-file page at WORKFLOW_PATH, prefilled with `yaml`. */
   workflowNew(yaml: string): string;
+  /** GitHub's editor for the workflow at WORKFLOW_PATH, when it already exists; GitHub can't prefill an edit. */
+  workflowEdit: string;
   /** The workflow's runs, with the "Run workflow" button. */
   workflowPage: string;
   /** The README editor; GitHub can't prefill an edit. */
@@ -41,6 +43,7 @@ export function profileRepoLinks(user: string, branch: string): ProfileRepoLinks
     repo,
     secretNew: `${repo}/settings/secrets/actions/new`,
     workflowNew: (yaml) => `${repo}/new/${ref}?filename=${WORKFLOW_PATH}&value=${encodeURIComponent(yaml)}`,
+    workflowEdit: `${repo}/edit/${ref}/${WORKFLOW_PATH}`,
     workflowPage: `${repo}/actions/workflows/${workflowFile}`,
     readmeEdit: `${repo}/edit/${ref}/README.md`,
     newRepo: `https://github.com/new?name=${user}`,
