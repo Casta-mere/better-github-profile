@@ -4,6 +4,8 @@ import { readSnapshot, writeOutputs } from './files';
 import { commitIfChanged } from './git';
 import { readInputs } from './inputs';
 import { run, type RunResult } from './run';
+import { sendPing } from './telemetry';
+import { VERSION } from './version';
 
 const SUMMARY: Record<RunResult['status'], string> = {
   fresh: 'Cards updated from fresh data.',
@@ -17,7 +19,14 @@ async function main(): Promise<void> {
     core.setSecret(cfg.token);
     const now = () => new Date();
     const result = await run(cfg, {
-      ping: async () => {},
+      // run() calls this only when `telemetry` is on; sendPing skips while TELEMETRY_URL is empty.
+      ping: () =>
+        sendPing({
+          repoId: process.env.GITHUB_REPOSITORY_ID,
+          version: VERSION,
+          theme: cfg.theme,
+          debug: (msg) => core.debug(msg),
+        }),
       collect: () => collectSnapshot({ ...cfg, now }),
       readPrev: () => readSnapshot(`${cfg.outputDir}/snapshot.json`, (msg) => core.warning(msg)),
       write: (files) => writeOutputs(files),

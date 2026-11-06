@@ -76,8 +76,9 @@ async function update(cfg: ActionConfig, deps: RunDeps): Promise<RunResult> {
   if (next === null) {
     if (prev === null) throw new Error(`Could not build the first snapshot: ${reasons.join('; ')}`);
     const asOf = prev.generatedAt.slice(0, 10);
+    const why = reasons.join('; ').replace(/\.+$/, '');
     deps.warn(
-      `Using last good snapshot from ${asOf}: ${reasons.join('; ')}. ` +
+      `Using last good snapshot from ${asOf}: ${why}. ` +
         `The cards show "stale · data as of ${asOf}" until a run succeeds. ` +
         `If a value really did drop to 0, delete ${snapshotPath} and the next run starts fresh.`,
     );

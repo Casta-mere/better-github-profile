@@ -87,7 +87,7 @@ describe('run', () => {
   });
 
   it('fetch error with prev → stale, warns, keeps snapshot', async () => {
-    const failure = new GraphQLFailure('GitHub GraphQL request failed after 4 attempts: HTTP 502', 4);
+    const failure = new GraphQLFailure('GitHub GraphQL request failed after 4 attempts: HTTP 502 (try later).', 4);
     const { deps, files } = fakeDeps({ prev: prevSnapshot, collect: async () => Promise.reject(failure) });
     const snapshotBefore = files.get('cards/snapshot.json');
 
@@ -98,6 +98,7 @@ describe('run', () => {
     expect(warning).toContain('Using last good snapshot from 2026-11-01');
     expect(warning).toContain(failure.message);
     expect(warning).toContain('cards/snapshot.json');
+    expect(warning).not.toContain('..');
     const changed = deps.commit.mock.calls[0][0];
     expect(changed).not.toContain('cards/snapshot.json');
     expect(changed).toEqual(CARD_FILES);

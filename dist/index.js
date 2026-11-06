@@ -4087,11 +4087,11 @@ var require_util2 = __commonJS({
     var { isUint8Array } = __require("node:util/types");
     var { webidl } = require_webidl();
     var supportedHashes = [];
-    var crypto;
+    var crypto2;
     try {
-      crypto = __require("node:crypto");
+      crypto2 = __require("node:crypto");
       const possibleRelevantHashes = ["sha256", "sha384", "sha512"];
-      supportedHashes = crypto.getHashes().filter((hash) => possibleRelevantHashes.includes(hash));
+      supportedHashes = crypto2.getHashes().filter((hash) => possibleRelevantHashes.includes(hash));
     } catch {
     }
     function responseURL(response) {
@@ -4364,7 +4364,7 @@ var require_util2 = __commonJS({
       }
     }
     function bytesMatch(bytes, metadataList) {
-      if (crypto === void 0) {
+      if (crypto2 === void 0) {
         return true;
       }
       const parsedMetadata = parseMetadata(metadataList);
@@ -4379,7 +4379,7 @@ var require_util2 = __commonJS({
       for (const item of metadata) {
         const algorithm = item.algo;
         const expectedValue = item.hash;
-        let actualValue = crypto.createHash(algorithm).update(bytes).digest("base64");
+        let actualValue = crypto2.createHash(algorithm).update(bytes).digest("base64");
         if (actualValue[actualValue.length - 1] === "=") {
           if (actualValue[actualValue.length - 2] === "=") {
             actualValue = actualValue.slice(0, -2);
@@ -5443,8 +5443,8 @@ var require_body = __commonJS({
     var { multipartFormDataParser } = require_formdata_parser();
     var random;
     try {
-      const crypto = __require("node:crypto");
-      random = (max) => crypto.randomInt(0, max);
+      const crypto2 = __require("node:crypto");
+      random = (max) => crypto2.randomInt(0, max);
     } catch {
       random = (max) => Math.floor(Math.random(max));
     }
@@ -17083,13 +17083,13 @@ var require_frame = __commonJS({
     "use strict";
     var { maxUnsigned16Bit } = require_constants5();
     var BUFFER_SIZE = 16386;
-    var crypto;
+    var crypto2;
     var buffer = null;
     var bufIdx = BUFFER_SIZE;
     try {
-      crypto = __require("node:crypto");
+      crypto2 = __require("node:crypto");
     } catch {
-      crypto = {
+      crypto2 = {
         // not full compatibility, but minimum.
         randomFillSync: function randomFillSync(buffer2, _offset, _size) {
           for (let i = 0; i < buffer2.length; ++i) {
@@ -17102,7 +17102,7 @@ var require_frame = __commonJS({
     function generateMask() {
       if (bufIdx === BUFFER_SIZE) {
         bufIdx = 0;
-        crypto.randomFillSync(buffer ??= Buffer.allocUnsafe(BUFFER_SIZE), 0, BUFFER_SIZE);
+        crypto2.randomFillSync(buffer ??= Buffer.allocUnsafe(BUFFER_SIZE), 0, BUFFER_SIZE);
       }
       return [buffer[bufIdx++], buffer[bufIdx++], buffer[bufIdx++], buffer[bufIdx++]];
     }
@@ -17174,9 +17174,9 @@ var require_connection = __commonJS({
     var { Headers: Headers2, getHeadersList } = require_headers();
     var { getDecodeSplit } = require_util2();
     var { WebsocketFrameSend } = require_frame();
-    var crypto;
+    var crypto2;
     try {
-      crypto = __require("node:crypto");
+      crypto2 = __require("node:crypto");
     } catch {
     }
     function establishWebSocketConnection(url, protocols, client, ws, onEstablish, options) {
@@ -17196,7 +17196,7 @@ var require_connection = __commonJS({
         const headersList = getHeadersList(new Headers2(options.headers));
         request2.headersList = headersList;
       }
-      const keyValue = crypto.randomBytes(16).toString("base64");
+      const keyValue = crypto2.randomBytes(16).toString("base64");
       request2.headersList.append("sec-websocket-key", keyValue);
       request2.headersList.append("sec-websocket-version", "13");
       for (const protocol of protocols) {
@@ -17226,7 +17226,7 @@ var require_connection = __commonJS({
             return;
           }
           const secWSAccept = response.headersList.get("Sec-WebSocket-Accept");
-          const digest = crypto.createHash("sha1").update(keyValue + uid).digest("base64");
+          const digest = crypto2.createHash("sha1").update(keyValue + uid).digest("base64");
           if (secWSAccept !== digest) {
             failWebsocketConnection(ws, "Incorrect hash received in Sec-WebSocket-Accept header.");
             return;
@@ -20342,6 +20342,9 @@ function setFailed(message2) {
   process.exitCode = ExitCode.Failure;
   error(message2);
 }
+function debug(message2) {
+  issueCommand("debug", {}, message2);
+}
 function error(message2, properties = {}) {
   issueCommand("error", toCommandProperties(properties), message2 instanceof Error ? message2.toString() : message2);
 }
@@ -21264,8 +21267,9 @@ async function update(cfg, deps) {
   if (next === null) {
     if (prev === null) throw new Error(`Could not build the first snapshot: ${reasons.join("; ")}`);
     const asOf = prev.generatedAt.slice(0, 10);
+    const why = reasons.join("; ").replace(/\.+$/, "");
     deps.warn(
-      `Using last good snapshot from ${asOf}: ${reasons.join("; ")}. The cards show "stale \xB7 data as of ${asOf}" until a run succeeds. If a value really did drop to 0, delete ${snapshotPath} and the next run starts fresh.`
+      `Using last good snapshot from ${asOf}: ${why}. The cards show "stale \xB7 data as of ${asOf}" until a run succeeds. If a value really did drop to 0, delete ${snapshotPath} and the next run starts fresh.`
     );
     const { committed: committed2 } = await save(cards(prev, asOf));
     return { status: "stale", committed: committed2 };
@@ -21279,6 +21283,48 @@ async function update(cfg, deps) {
   return { status: changed.length > 0 ? "fresh" : "unchanged", committed };
 }
 
+// src/action/telemetry.ts
+var TELEMETRY_URL = "";
+async function pingId(repoId) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`better-github-profile:${repoId}`));
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+async function sendPing(opts) {
+  const url = opts.url ?? TELEMETRY_URL;
+  if (!url || !opts.repoId) return;
+  const debug2 = opts.debug ?? (() => {
+  });
+  const timeoutMs = opts.timeoutMs ?? 3e3;
+  const controller = new AbortController();
+  let timer;
+  try {
+    const body = JSON.stringify({ id: await pingId(opts.repoId), version: opts.version, theme: opts.theme });
+    const request2 = (opts.fetch ?? fetch)(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "User-Agent": "better-github-profile" },
+      body,
+      signal: controller.signal
+    });
+    const timeout = new Promise((_, reject) => {
+      timer = setTimeout(() => {
+        reject(new Error(`timeout after ${timeoutMs} ms`));
+        controller.abort();
+      }, timeoutMs);
+    });
+    const res = await Promise.race([request2, timeout]);
+    res.body?.cancel().catch(() => {
+    });
+    if (!res.ok) debug2(`usage ping: HTTP ${res.status}`);
+  } catch (err) {
+    debug2(`usage ping failed: ${err instanceof Error ? err.message : String(err)}`);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// src/action/version.ts
+var VERSION = true ? "1.0.0" : "dev";
+
 // src/action/main.ts
 var SUMMARY = {
   fresh: "Cards updated from fresh data.",
@@ -21291,8 +21337,13 @@ async function main() {
     setSecret(cfg.token);
     const now = () => /* @__PURE__ */ new Date();
     const result = await run(cfg, {
-      ping: async () => {
-      },
+      // run() calls this only when `telemetry` is on; sendPing skips while TELEMETRY_URL is empty.
+      ping: () => sendPing({
+        repoId: process.env.GITHUB_REPOSITORY_ID,
+        version: VERSION,
+        theme: cfg.theme,
+        debug: (msg) => debug(msg)
+      }),
       collect: () => collectSnapshot({ ...cfg, now }),
       readPrev: () => readSnapshot(`${cfg.outputDir}/snapshot.json`, (msg) => warning(msg)),
       write: (files) => writeOutputs(files),

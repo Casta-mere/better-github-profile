@@ -24,3 +24,19 @@ jobs:
         run: npm run build && git diff --exit-code dist/
       - name: Bundle loads (fails on the missing token, not on a module error)
         run: out=$(node dist/index.js 2>&1 || true); echo "$out"; echo "$out" | grep -q STATS_TOKEN
+
+  worker:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: worker
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: worker/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run typecheck
