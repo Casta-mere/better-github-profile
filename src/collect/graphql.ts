@@ -2,6 +2,8 @@ export type Fetch = typeof fetch;
 
 const ENDPOINT = 'https://api.github.com/graphql';
 const USER_AGENT = 'better-github-profile';
+/** Longest `retry-after` we wait out; anything longer fails the attempt instead. */
+const MAX_RETRY_AFTER_S = 60;
 
 const TOKEN_REJECTED =
   'GitHub rejected the token (HTTP 401). Check the token secret (STATS_TOKEN) and its scopes: ' +
@@ -42,7 +44,8 @@ const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve,
 /**
  * POST a query to GitHub's GraphQL API. Retries network errors, timeouts, HTTP 5xx/429,
  * 403 with `retry-after`, and HTTP 200 with a non-empty `errors` array (partial data is
- * never trusted). Throws `GraphQLFailure` once retries run out or the failure is permanent.
+ * never trusted). A `retry-after` over 60 s is not waited out: that attempt fails for good.
+ * Throws `GraphQLFailure` once retries run out or the failure is permanent.
  */
 export async function graphql<T>(opts: GraphQLOptions): Promise<T> {
   const retries = opts.retries ?? 3;
@@ -118,12 +121,19 @@ async function request<T>(opts: GraphQLOptions, signal: AbortSignal): Promise<Ou
 function httpFailure(res: Response, body: unknown): Outcome<never> {
   const { status } = res;
   if (status === 401) return { ok: false, cause: TOKEN_REJECTED, retry: false };
-  const detail = isObj(body) && typeof body.message === 'string' ? `: ${body.message}` : '';
-  const cause = `HTTP ${status}${detail}`;
+  const message = isObj(body) && typeof body.message === 'string' ? body.message : undefined;
+  const cause = `HTTP ${status}${message ? `: ${message}` : ''}`;
   const waitMs = retryAfterMs(res.headers.get('retry-after'));
-  if (status === 403) return waitMs === undefined ? { ok: false, cause, retry: false } : { ok: false, cause, retry: true, waitMs };
-  if (status === 429 || status >= 500) return { ok: false, cause, retry: true, waitMs };
-  return { ok: false, cause, retry: false };
+  const retryable = status === 429 || status >= 500 || (status === 403 && waitMs !== undefined);
+  if (!retryable) return { ok: false, cause, retry: false };
+  if (waitMs !== undefined && waitMs > MAX_RETRY_AFTER_S * 1000) {
+    // Don't stall the workflow: fail now, go stale, and let the next scheduled run try again.
+    const limited = status === 403 || status === 429 ? 'rate limited, ' : '';
+    const capped =
+      `HTTP ${status}: ${limited}retry-after ${Math.ceil(waitMs / 1000)} s exceeds the ${MAX_RETRY_AFTER_S} s cap`;
+    return { ok: false, cause: message ? `${capped} (${message})` : capped, retry: false };
+  }
+  return { ok: false, cause, retry: true, waitMs };
 }
 
 /** `retry-after` is either delay-seconds or an HTTP date. */

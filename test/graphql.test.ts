@@ -122,6 +122,43 @@ describe('graphql', () => {
     expect(delayMs).not.toHaveBeenCalled();
   });
 
+  it('fails at once when retry-after exceeds the 60 s cap, without waiting', async () => {
+    // Real timers: sleeping for the hour would time the test out.
+    const fetch = fakeFetch(() => json(429, {}, { 'retry-after': '3600' }));
+    const { error } = await settle(graphql({ ...base, fetch }));
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(error).toBeInstanceOf(GraphQLFailure);
+    expect((error as GraphQLFailure).attempts).toBe(1);
+    expect((error as Error).message).toContain('HTTP 429: rate limited, retry-after 3600 s exceeds the 60 s cap');
+  });
+
+  it.each([
+    [403, 'HTTP 403: rate limited, retry-after 61 s exceeds the 60 s cap'],
+    [503, 'HTTP 503: retry-after 61 s exceeds the 60 s cap'],
+  ])('applies the retry-after cap to HTTP %i too', async (status, cause) => {
+    const fetch = fakeFetch(() => json(status, {}, { 'retry-after': '61' }));
+    const { error } = await settle(graphql({ ...base, fetch }));
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect((error as Error).message).toContain(cause);
+  });
+
+  it('keeps GitHub\'s message when retry-after exceeds the cap', async () => {
+    const fetch = fakeFetch(() => json(403, { message: 'You have exceeded a secondary rate limit.' }, { 'retry-after': '3600' }));
+    const { error } = await settle(graphql({ ...base, fetch }));
+    expect((error as Error).message).toContain('retry-after 3600 s exceeds the 60 s cap');
+    expect((error as Error).message).toContain('You have exceeded a secondary rate limit.');
+  });
+
+  it('still waits a retry-after of exactly 60 s', async () => {
+    vi.useFakeTimers();
+    const fetch = fakeFetch(() => json(429, {}, { 'retry-after': '60' }), () => json(200, { data: { ok: true } }));
+    const result = settle(graphql({ ...base, fetch }));
+    await vi.advanceTimersByTimeAsync(59999);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect((await result).value).toEqual({ ok: true });
+  });
+
   it('backs off 2s, 4s, 8s by default', async () => {
     vi.useFakeTimers();
     const fetch = fakeFetch(() => json(502, {}));
