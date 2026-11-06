@@ -1,6 +1,12 @@
 import { THEMES } from '../render/index';
 import type { ThemeName } from '../snapshot/types';
 
+/**
+ * README markup: `<picture>` with a `prefers-color-scheme` source (recommended), or two
+ * Markdown images per card with GitHub's `#gh-light-mode-only` / `#gh-dark-mode-only` fragments.
+ */
+export type ReadmeFormat = 'picture' | 'markdown';
+
 /** What the selector page lets users choose; turned into the workflow and README markup. */
 export interface SetupConfig {
   theme: ThemeName;
@@ -11,9 +17,11 @@ export interface SetupConfig {
   excludeLangs: string[];
   outputDir: string;
   telemetry: boolean;
+  /** Only shapes the README markup; not an Action input, so the workflow ignores it. */
+  readmeFormat: ReadmeFormat;
 }
 
-/** The Action's own defaults: a workflow generated from this has no optional inputs. */
+/** The Action's own defaults (a workflow generated from this has no optional inputs), and `<picture>`. */
 export const DEFAULT_SETUP: SetupConfig = {
   theme: 'native',
   cards: [...THEMES.native.cards],
@@ -23,6 +31,7 @@ export const DEFAULT_SETUP: SetupConfig = {
   excludeLangs: [],
   outputDir: 'cards',
   telemetry: true,
+  readmeFormat: 'picture',
 };
 
 /** Where users save the generated workflow. */

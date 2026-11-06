@@ -1,5 +1,5 @@
 import { THEMES } from '../src/render/index';
-import type { SetupConfig } from '../src/snippets/index';
+import type { ReadmeFormat, SetupConfig } from '../src/snippets/index';
 import type { ThemeName } from '../src/snapshot/types';
 
 /** Switch controls: their value is the checkbox state. */
@@ -7,7 +7,10 @@ const SWITCHES = ['includePrivate', 'includeForks', 'telemetry'] as const;
 /** Comma-separated text inputs. */
 const LISTS = ['excludeRepos', 'excludeLangs'] as const;
 
+const README_FORMATS: readonly ReadmeFormat[] = ['picture', 'markdown'];
+
 const isTheme = (v: string): v is ThemeName => Object.hasOwn(THEMES, v);
+const isReadmeFormat = (v: string): v is ReadmeFormat => (README_FORMATS as readonly string[]).includes(v);
 
 function bool(control: string, value: string | boolean): boolean {
   if (typeof value !== 'boolean') throw new TypeError(`Control "${control}" takes a boolean`);
@@ -30,7 +33,8 @@ function splitList(value: string): string[] {
 /**
  * The selector page's reducer: one control change → the next setup. Controls are
  * `theme`, `card:<name>` (checkbox), the switches `includePrivate` / `includeForks` /
- * `telemetry`, and the text inputs `excludeRepos` / `excludeLangs`.
+ * `telemetry`, the text inputs `excludeRepos` / `excludeLangs`, and `readmeFormat`
+ * (`picture` or `markdown`).
  *
  * Switching theme selects all of the new theme's cards. Cards stay in theme order, and the
  * last checked card can't be unchecked, so `cards` is never empty.
@@ -49,6 +53,14 @@ export function applyControl(c: SetupConfig, control: string, value: string | bo
     const on = bool(control, value);
     const cards = all.filter((x) => (x === card ? on : c.cards.includes(x)));
     return cards.length > 0 ? { ...c, cards } : c;
+  }
+
+  if (control === 'readmeFormat') {
+    const format = text(control, value);
+    if (!isReadmeFormat(format)) {
+      throw new Error(`Unknown README format "${format}"; available: ${README_FORMATS.join(', ')}`);
+    }
+    return { ...c, readmeFormat: format };
   }
 
   for (const key of SWITCHES) if (control === key) return { ...c, [key]: bool(control, value) };

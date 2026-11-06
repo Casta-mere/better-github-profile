@@ -110,9 +110,25 @@
             <li class="box step">
               <div class="box-header">
                 <h2><span class="num">3</span><span>Paste into <code>README.md</code></span></h2>
-                <button type="button" class="btn" data-copy-from="readme" aria-label="Copy the README markup">Copy</button>
+                <div class="box-actions">
+                  <div class="segmented small" role="radiogroup" aria-label="README format">
+                    <label>
+                      <input type="radio" name="readmeFormat" value="picture" data-control="readmeFormat" checked />
+                      <span>&lt;picture&gt;</span>
+                    </label>
+                    <label>
+                      <input type="radio" name="readmeFormat" value="markdown" data-control="readmeFormat" />
+                      <span>Markdown</span>
+                    </label>
+                  </div>
+                  <button type="button" class="btn" data-copy-from="readme" aria-label="Copy the README markup">Copy</button>
+                </div>
               </div>
               <pre><code id="readme"></code></pre>
+              <p id="readme-note" class="note step-note" hidden>
+                GitHub has deprecated the <code>#gh-light-mode-only</code> / <code>#gh-dark-mode-only</code> fragments in
+                favor of <code>&lt;picture&gt;</code>. They still work, but may stop.
+              </p>
             </li>
           </ol>
         </div>

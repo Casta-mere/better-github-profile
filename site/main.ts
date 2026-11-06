@@ -56,9 +56,11 @@ function renderCardChecks(): void {
 }
 
 function syncControls(): void {
-  for (const input of controls.querySelectorAll<HTMLInputElement>('input[data-control]')) {
+  // Not only the form: the README format toggle sits in step 3's header.
+  for (const input of document.querySelectorAll<HTMLInputElement>('input[data-control]')) {
     const control = input.dataset.control;
     if (control === 'theme') input.checked = input.value === setup.theme;
+    else if (control === 'readmeFormat') input.checked = input.value === setup.readmeFormat;
     else if (control === 'includePrivate' || control === 'includeForks' || control === 'telemetry') {
       input.checked = setup[control];
     }
@@ -86,6 +88,7 @@ function renderPreview(): void {
 function renderOutput(): void {
   el('#workflow').textContent = workflowYaml(setup);
   el('#readme').textContent = readmeSnippet(setup);
+  el('#readme-note').hidden = setup.readmeFormat !== 'markdown';
 }
 
 function render(): void {
@@ -95,7 +98,7 @@ function render(): void {
 }
 
 controls.addEventListener('submit', (e) => e.preventDefault());
-controls.addEventListener('input', (e) => {
+document.addEventListener('input', (e) => {
   const input = e.target;
   if (!(input instanceof HTMLInputElement) || !input.dataset.control) return;
   setup = applyControl(setup, input.dataset.control, input.type === 'checkbox' ? input.checked : input.value);

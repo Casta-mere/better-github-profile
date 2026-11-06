@@ -56,11 +56,24 @@ describe('applyControl', () => {
     expect(c).toMatchObject({ includePrivate: false, includeForks: true, telemetry: false });
   });
 
+  it('readmeFormat switches between markdown and picture', () => {
+    const md = applyControl(DEFAULT_SETUP, 'readmeFormat', 'markdown');
+    expect(md).toEqual({ ...DEFAULT_SETUP, readmeFormat: 'markdown' });
+    expect(applyControl(md, 'readmeFormat', 'picture')).toEqual(DEFAULT_SETUP);
+  });
+
+  it('rejects an unknown README format', () => {
+    expect(() => applyControl(DEFAULT_SETUP, 'readmeFormat', 'html')).toThrow(/picture, markdown/);
+    expect(() => applyControl(DEFAULT_SETUP, 'readmeFormat', 'toString')).toThrow(/picture, markdown/);
+    expect(() => applyControl(DEFAULT_SETUP, 'readmeFormat', true)).toThrow(/string/);
+  });
+
   it('does not mutate its input', () => {
     const before = structuredClone(DEFAULT_SETUP);
     applyControl(DEFAULT_SETUP, 'card:languages', false);
     applyControl(DEFAULT_SETUP, 'theme', 'strip');
     applyControl(DEFAULT_SETUP, 'excludeRepos', 'x');
+    applyControl(DEFAULT_SETUP, 'readmeFormat', 'markdown');
     expect(DEFAULT_SETUP).toEqual(before);
   });
 
