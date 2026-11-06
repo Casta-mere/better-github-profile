@@ -1,0 +1,15 @@
+{
+  "data": {
+    "viewer": {
+      "login": "Casta-mere",
+      "repositories": null
+    }
+  },
+  "errors": [
+    {
+      "path": ["viewer", "repositories"],
+      "locations": [{ "line": 3, "column": 5 }],
+      "message": "Something went wrong while executing your query. This may be the result of a timeout, or it could be a GitHub bug. Please include `C1A8:2B5E:1F7D0A3:2084C51:672F1B3E` when reporting this issue."
+    }
+  ]
+}
