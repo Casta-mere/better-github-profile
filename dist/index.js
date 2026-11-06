@@ -20948,7 +20948,7 @@ function staleText(date) {
   return `stale \xB7 data as of ${date}`;
 }
 
-// src/render/themes/native.ts
+// src/render/themes/native/index.ts
 var W = 330;
 var PAD_Y = 18;
 var X0 = 1 + 20;
@@ -21065,7 +21065,7 @@ function languages(s, o) {
 }
 var native = defineTheme("native", { overview, languages });
 
-// src/render/themes/strip.ts
+// src/render/themes/strip/index.ts
 var W2 = 820;
 var SIZE = 12;
 var MARGIN_Y = 8;
@@ -21090,7 +21090,7 @@ function section(x, base, value, label, labelFirst = false) {
   const width = labelFirst ? textWidth(label, SIZE) + SPACE + textWidth(value, SIZE, true) : textWidth(value, SIZE, true) + SPACE + LABEL_DX + textWidth(label, SIZE);
   return { text, width };
 }
-function strip(s, o) {
+function stripCard(s, o) {
   const p = PRIMER[o.mode];
   const body = [];
   const pillBase = MARGIN_Y + 19.5;
@@ -21151,13 +21151,13 @@ function strip(s, o) {
   const who = s.user.name?.trim() ? s.user.name : s.user.login;
   return svgDoc({ width: W2, height: H, title: `${who}'s GitHub stats`, css: css2(p), body });
 }
-var stripTheme = defineTheme("strip", { strip });
+var strip = defineTheme("strip", { strip: stripCard });
+
+// src/render/themes/index.ts
+var registered = { native, strip };
+var THEMES = registered;
 
 // src/render/index.ts
-var THEMES = {
-  native,
-  strip: stripTheme
-};
 var MODES = ["light", "dark"];
 function renderCards(s, cfg) {
   const theme = THEMES[cfg.theme];

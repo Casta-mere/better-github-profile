@@ -82,8 +82,4 @@ describe('theme strip', () => {
     expect(() => renderCards(casta, { theme: 'strip', cards: ['overview'] })).toThrow(
       'Unknown card "overview" for theme "strip"; available: strip',
     ));
-
-  it('matches file snapshots', async () => {
-    for (const c of renderCards(casta, { theme: 'strip' })) await expect(c.svg).toMatchFileSnapshot(`__snapshots__/${c.file}`);
-  });
 });

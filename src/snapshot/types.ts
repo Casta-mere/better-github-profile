@@ -28,7 +28,8 @@ export interface Snapshot {
   languages: { name: string; color: string | null; bytes: number }[]; // bytes desc
 }
 
-export type ThemeName = 'native' | 'strip';
+// Derived from the theme registry. Type-only, so there is no runtime import of the renderer.
+export type { ThemeName } from '../render/themes/index';
 export type Mode = 'light' | 'dark';
 
 type Rec = Record<string, unknown>;

@@ -6,22 +6,22 @@ GitHub profile stats cards, built by a GitHub Action in your own repo: correct n
 
 ## Themes
 
-**native**: an overview card and a languages card.
+**[native](src/render/themes/native/)**: an overview card and a languages card.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="test/__snapshots__/native-overview-dark.svg">
-  <img alt="native theme, overview card" src="test/__snapshots__/native-overview-light.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="test/__snapshots__/native/native-overview-dark.svg">
+  <img alt="native theme, overview card" src="test/__snapshots__/native/native-overview-light.svg">
 </picture>
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="test/__snapshots__/native-languages-dark.svg">
-  <img alt="native theme, languages card" src="test/__snapshots__/native-languages-light.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="test/__snapshots__/native/native-languages-dark.svg">
+  <img alt="native theme, languages card" src="test/__snapshots__/native/native-languages-light.svg">
 </picture>
 
-**strip**: everything on one wide line.
+**[strip](src/render/themes/strip/)**: everything on one wide line.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="test/__snapshots__/strip-strip-dark.svg">
-  <img alt="strip theme" src="test/__snapshots__/strip-strip-light.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="test/__snapshots__/strip/strip-strip-dark.svg">
+  <img alt="strip theme" src="test/__snapshots__/strip/strip-strip-light.svg">
 </picture>
 
 ## Quick start

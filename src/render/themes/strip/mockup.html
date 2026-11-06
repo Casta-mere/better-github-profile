@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>strip theme: design mockup (option J)</title>
+<style>
+  body{margin:0;padding:24px;font:14px/1.5 -apple-system,"Segoe UI",Helvetica,Arial,sans-serif;background:#f6f8fa;color:#1f2328}
+  header{max-width:880px;margin:0 auto 18px}
+  header h1{font-size:20px;margin:0 0 6px}
+  header p{margin:4px 0;color:#59636e}
+  header code{font-size:12.5px}
+  .pair{display:grid;grid-template-columns:1fr;border-radius:10px;overflow:hidden;border:1px solid #8884;width:max-content;max-width:100%;margin:0 auto}
+  .pair.side{grid-template-columns:1fr 1fr}
+  .stage{padding:22px;display:flex;gap:14px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+  .stage.light{background:#ffffff;--fg:#1f2328;--mut:#59636e;--bd:#d1d9e0;--card:#ffffff;--acc:#0969da;--trk:#eff2f5;--g1:#9be9a8;--g2:#40c463;--g3:#30a14e;--g4:#216e39;--gold:#bf8700;--glass:rgba(255,255,255,.55);--blob1:#a5c8ff;--blob2:#ffc9e0;--blob3:#c8f5d8}
+  .stage.dark{background:#0d1117;--fg:#e6edf3;--mut:#9198a1;--bd:#3d444d;--card:#0d1117;--acc:#4493f8;--trk:#21262d;--g1:#0e4429;--g2:#006d32;--g3:#26a641;--g4:#39d353;--gold:#e3b341;--glass:rgba(22,27,34,.55);--blob1:#1f4fa8;--blob2:#7a2858;--blob3:#1d6b45}
+  .tag{font:600 11px system-ui;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);width:100%;margin:-8px 0 2px}
+  .sans{font-family:-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;color:var(--fg)}
+  .mono{font-family:ui-monospace,"SF Mono",Menlo,monospace;color:var(--fg)}
+  .j{width:820px;display:flex;flex-direction:column;gap:12px}
+  .j .strip{display:flex;border:1px solid var(--bd);border-radius:999px;overflow:hidden;font-size:12px;width:max-content;max-width:100%}
+  .j .strip span{padding:6px 14px;border-right:1px solid var(--bd);white-space:nowrap}.j .strip span:last-child{border:0}
+  .j .strip b{font-variant-numeric:tabular-nums}.j .strip em{font-style:normal;color:var(--mut);margin-left:5px}
+  .j .mini{display:flex;align-items:center;gap:12px;font-size:12px;color:var(--mut)}
+  .j .mini .sp{display:flex;align-items:flex-end;gap:1px;height:18px;width:160px}.j .mini .sp i{flex:1;background:var(--g3);opacity:.6}
+  .j .mini .lb{display:flex;height:6px;width:160px;border-radius:3px;overflow:hidden}.j .mini .lb i{opacity:.75}
+</style>
+</head>
+<body>
+<header>
+  <h1>J · Compact strip (built as <code>strip</code>)</h1>
+  <p>One or two thin lines instead of big cards, so it sits under a bio without taking over the page: the stats as a pill, plus a tiny sparkline and language bar.</p>
+  <p><b>Data it needs:</b> the current snapshot.</p>
+  <p>The design the <code>strip</code> theme was built from. The theme is the reference where they differ. The numbers come from the public test fixture, <code>test/fixtures/snapshot-casta-mere.json</code>.</p>
+</header>
+<div class="pair"><div class="stage light"></div><div class="stage dark"></div></div>
+<script>
+// From the public test fixture, test/fixtures/snapshot-casta-mere.json: calendar.weeks
+// (oldest to newest), and the top languages as topLanguages() returns them.
+const weeks=[1,18,8,4,1,4,0,0,1,2,10,2,4,28,12,12,3,13,13,11,14,3,20,22,30,23,6,7,9,15,8,16,5,43,20,21,18,66,11,3,21,19,2,25,42,22,9,1,0,13,54,76,4];
+const langs=[["HTML","#e34c26",42.2],["Python","#3572A5",31.5],["TypeScript","#3178c6",13.2],["TeX","#3D6117",5.4],["Other","#8b949e",7.7]];
+const max=Math.max(...weeks);
+const card=`<div class="j sans">
+ <div class="strip"><span><b>2,383</b><em>contributions</em></span><span><b>795</b><em>this year</em></span><span><b>59</b><em>repos</em></span><span>★ <b>21</b></span><span><b>22</b><em>followers</em></span></div>
+ <div class="mini"><span>52 wks</span><span class="sp">${weeks.map(w=>`<i style="height:${Math.max(6,w/max*100)}%"></i>`).join('')}</span><span>langs</span><span class="lb">${langs.map(l=>`<i style="width:${l[2]}%;background:${l[1]}"></i>`).join('')}</span><span>HTML · Python · TypeScript</span></div>
+</div>`;
+document.querySelectorAll('.stage').forEach(s=>{s.innerHTML=`<div class="tag">${s.classList.contains('light')?'light':'dark'}</div>`+card});
+</script>
+</body>
+</html>

@@ -1,10 +1,10 @@
-import type { Snapshot } from '../../snapshot/types';
-import { topLanguages } from '../languages';
-import { FONT_STACK, PRIMER, type Palette } from '../primer';
-import { escapeXml, fmtInt, fmtPct, languageBar, num, sparkline, staleText, svgDoc, textWidth, truncate } from '../svg';
-import { defineTheme, type RenderOptions } from '../theme';
+import type { Snapshot } from '../../../snapshot/types';
+import { topLanguages } from '../../languages';
+import { FONT_STACK, PRIMER, type Palette } from '../../primer';
+import { escapeXml, fmtInt, fmtPct, languageBar, num, sparkline, staleText, svgDoc, textWidth, truncate } from '../../svg';
+import { defineTheme, type RenderOptions } from '../../theme';
 
-// Layout of option A in card-styles.html: 330px wide, 1px border, 6px radius,
+// Layout of option A in mockup.html: 330px wide, 1px border, 6px radius,
 // 18px / 20px padding. Vertical positions follow the mockup's CSS line boxes.
 const W = 330;
 const PAD_Y = 18;

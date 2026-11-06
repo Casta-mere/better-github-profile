@@ -159,8 +159,4 @@ describe('theme native', () => {
     );
     expect(() => THEMES.native.render('nope', casta, { mode: 'light' })).toThrow('Unknown card "nope"');
   });
-
-  it('matches file snapshots', async () => {
-    for (const c of renderCards(casta, { theme: 'native' })) await expect(c.svg).toMatchFileSnapshot(`__snapshots__/${c.file}`);
-  });
 });

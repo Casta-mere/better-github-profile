@@ -1,10 +1,10 @@
-import type { Snapshot } from '../../snapshot/types';
-import { topLanguages } from '../languages';
-import { FONT_STACK, PRIMER, type Palette } from '../primer';
-import { escapeXml, fmtInt, languageBar, num, sparkline, staleText, svgDoc, textWidth, truncate } from '../svg';
-import { defineTheme, type RenderOptions } from '../theme';
+import type { Snapshot } from '../../../snapshot/types';
+import { topLanguages } from '../../languages';
+import { FONT_STACK, PRIMER, type Palette } from '../../primer';
+import { escapeXml, fmtInt, languageBar, num, sparkline, staleText, svgDoc, textWidth, truncate } from '../../svg';
+import { defineTheme, type RenderOptions } from '../../theme';
 
-// Layout of option J in card-styles-3.html: 820px wide, no card frame. Line 1 is a pill
+// Layout of option J in mockup.html: 820px wide, no card frame. Line 1 is a pill
 // of stat sections divided by 1px rules; line 2 is a small sparkline and language bar.
 const W = 820;
 const SIZE = 12; // font size everywhere
@@ -39,7 +39,7 @@ function section(x: number, base: number, value: string, label: string, labelFir
   return { text, width };
 }
 
-function strip(s: Snapshot, o: RenderOptions): string {
+function stripCard(s: Snapshot, o: RenderOptions): string {
   const p = PRIMER[o.mode];
   const body: string[] = [];
 
@@ -111,4 +111,4 @@ function strip(s: Snapshot, o: RenderOptions): string {
   return svgDoc({ width: W, height: H, title: `${who}'s GitHub stats`, css: css(p), body });
 }
 
-export const stripTheme = defineTheme('strip', { strip });
+export const strip = defineTheme('strip', { strip: stripCard });

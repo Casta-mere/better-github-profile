@@ -2,8 +2,8 @@ import type { Mode } from '../snapshot/types';
 
 /**
  * GitHub Primer color tokens, light and dark, as in the approved mockups
- * (`card-styles.html`, `card-styles-3.html`). Each mode is its own SVG file, so there is
- * no media query: the README `<picture>` picks the file.
+ * (`themes/native/mockup.html`, `themes/strip/mockup.html`). Each mode is its own SVG
+ * file, so there is no media query: the README `<picture>` picks the file.
  */
 export interface Palette {
   /** Primary text. */

@@ -1,16 +1,11 @@
-import type { Mode, Snapshot, ThemeName } from '../snapshot/types';
-import { unknownCard, type Theme } from './theme';
-import { native } from './themes/native';
-import { stripTheme } from './themes/strip';
+import type { Mode, Snapshot } from '../snapshot/types';
+import { unknownCard } from './theme';
+import { THEMES, type ThemeName } from './themes/index';
 
 export type { RenderOptions, Theme } from './theme';
+export { THEMES, type ThemeName } from './themes/index';
 export { topLanguages, type LanguageSlice } from './languages';
 export { escapeXml, fmtInt, fmtPct } from './svg';
-
-export const THEMES: Record<ThemeName, Theme> = {
-  native,
-  strip: stripTheme,
-};
 
 export interface RenderedCard {
   /** `<theme>-<card>-<mode>.svg` */

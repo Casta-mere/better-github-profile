@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { TELEMETRY_URL } from '../src/action/telemetry';
+import { THEMES } from '../src/render/index';
 import { DEFAULT_SETUP, readmeSnippet, TOKEN_HELP, WORKFLOW_PATH, workflowYaml } from '../src/snippets/index';
 
 const root = new URL('../', import.meta.url);
@@ -55,8 +56,19 @@ describe('README', () => {
   it('preview images exist', () => {
     const srcs = [...readme.matchAll(/(?:src|srcset)="([^"]+)"/g)].map((m) => m[1]);
     const local = srcs.filter((s) => !/^https?:/.test(s) && !s.startsWith(`${DEFAULT_SETUP.outputDir}/`));
-    expect(local).toEqual(expect.arrayContaining(['docs/logo.svg', 'test/__snapshots__/strip-strip-dark.svg']));
+    expect(local).toEqual(expect.arrayContaining(['docs/logo.svg', 'test/__snapshots__/strip/strip-strip-dark.svg']));
     for (const path of local) expect(existsSync(new URL(path, root)), path).toBe(true);
+  });
+
+  it('previews every registered theme, light and dark', () => {
+    for (const [name, theme] of Object.entries(THEMES)) {
+      const previewed = theme.cards.filter(
+        (card) =>
+          readme.includes(`srcset="test/__snapshots__/${name}/${name}-${card}-dark.svg"`) &&
+          readme.includes(`src="test/__snapshots__/${name}/${name}-${card}-light.svg"`),
+      );
+      expect(previewed.length, `README previews no card of theme ${name}`).toBeGreaterThan(0);
+    }
   });
 
   it('calls the ping id pseudonymous, never anonymous or one-way on its own', () => {
