@@ -1,0 +1,39 @@
+name: better-github-profile
+description: GitHub profile stats cards, built in your own repo. Correct numbers, light and dark, nothing hosted.
+author: casta-mere
+branding:
+  icon: bar-chart-2
+  color: green
+
+inputs:
+  token:
+    description: Classic personal access token with read:user (plus repo to include private work), usually secrets.STATS_TOKEN.
+    required: true
+  theme:
+    description: Card theme, native or strip.
+    default: native
+  cards:
+    description: Comma-separated cards of the theme to render. Empty renders all of them.
+    default: ''
+  exclude_repos:
+    description: Comma-separated repository names to leave out (case-insensitive).
+    default: ''
+  exclude_langs:
+    description: Comma-separated languages to leave out (case-insensitive).
+    default: ''
+  include_forks:
+    description: Count forked repositories.
+    default: 'false'
+  include_private:
+    description: Count private work, as totals only. Private repository names are never stored.
+    default: 'true'
+  output_dir:
+    description: Directory in the repo for the cards and snapshot.json.
+    default: cards
+  telemetry:
+    description: Send the usage ping (a pseudonymous hash of the repo ID, the version and the theme), once per run.
+    default: 'true'
+
+runs:
+  using: node24
+  main: dist/index.js
