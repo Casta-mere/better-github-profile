@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="820" height="76" viewBox="0 0 820 76" role="img">
+<title>Castamere's GitHub stats</title>
+<style>
+text{font-family:-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;font-size:12px;fill:#e6edf3}
+.n{font-weight:700;font-variant-numeric:tabular-nums}
+.m{fill:#9198a1}
+.wk{fill:#26a641;opacity:.6}
+</style>
+<rect x="0.5" y="8.5" width="471.16" height="29" rx="14.5" fill="none" stroke="#3d444d"/>
+<path d="M134.52 9v28" stroke="#3d444d"/>
+<path d="M239.28 9v28" stroke="#3d444d"/>
+<path d="M317.5 9v28" stroke="#3d444d"/>
+<path d="M375.76 9v28" stroke="#3d444d"/>
+<text x="15" y="27.5"><tspan class="n">2,383</tspan> <tspan class="m" dx="1.6">contributions</tspan></text>
+<text x="149.02" y="27.5"><tspan class="n">795</tspan> <tspan class="m" dx="1.6">past year</tspan></text>
+<text x="253.78" y="27.5"><tspan class="n">59</tspan> <tspan class="m" dx="1.6">repos</tspan></text>
+<text x="332" y="27.5">★ <tspan class="n">21</tspan></text>
+<text x="390.26" y="27.5"><tspan class="n">22</tspan> <tspan class="m" dx="1.6">followers</tspan></text>
+<text class="m" x="0" y="63.5">52 wks</text>
+<rect class="wk" x="50.09" y="67" width="2.04" height="1"/>
+<rect class="wk" x="53.13" y="63.74" width="2.04" height="4.26"/>
+<rect class="wk" x="56.17" y="66.11" width="2.04" height="1.89"/>
+<rect class="wk" x="59.2" y="67" width="2.04" height="1"/>
+<rect class="wk" x="62.24" y="67" width="2.04" height="1"/>
+<rect class="wk" x="65.28" y="67" width="2.04" height="1"/>
+<rect class="wk" x="68.32" y="67" width="2.04" height="1"/>
+<rect class="wk" x="71.36" y="67" width="2.04" height="1"/>
+<rect class="wk" x="74.39" y="67" width="2.04" height="1"/>
+<rect class="wk" x="77.43" y="67" width="2.04" height="1"/>
+<rect class="wk" x="80.47" y="65.63" width="2.04" height="2.37"/>
+<rect class="wk" x="83.51" y="67" width="2.04" height="1"/>
+<rect class="wk" x="86.54" y="67" width="2.04" height="1"/>
+<rect class="wk" x="89.58" y="61.37" width="2.04" height="6.63"/>
+<rect class="wk" x="92.62" y="65.16" width="2.04" height="2.84"/>
+<rect class="wk" x="95.66" y="65.16" width="2.04" height="2.84"/>
+<rect class="wk" x="98.69" y="67" width="2.04" height="1"/>
+<rect class="wk" x="101.73" y="64.92" width="2.04" height="3.08"/>
+<rect class="wk" x="104.77" y="64.92" width="2.04" height="3.08"/>
+<rect class="wk" x="107.81" y="65.39" width="2.04" height="2.61"/>
+<rect class="wk" x="110.85" y="64.68" width="2.04" height="3.32"/>
+<rect class="wk" x="113.88" y="67" width="2.04" height="1"/>
+<rect class="wk" x="116.92" y="63.26" width="2.04" height="4.74"/>
+<rect class="wk" x="119.96" y="62.79" width="2.04" height="5.21"/>
+<rect class="wk" x="123" y="60.89" width="2.04" height="7.11"/>
+<rect class="wk" x="126.03" y="62.55" width="2.04" height="5.45"/>
+<rect class="wk" x="129.07" y="66.58" width="2.04" height="1.42"/>
+<rect class="wk" x="132.11" y="66.34" width="2.04" height="1.66"/>
+<rect class="wk" x="135.15" y="65.87" width="2.04" height="2.13"/>
+<rect class="wk" x="138.19" y="64.45" width="2.04" height="3.55"/>
+<rect class="wk" x="141.22" y="66.11" width="2.04" height="1.89"/>
+<rect class="wk" x="144.26" y="64.21" width="2.04" height="3.79"/>
+<rect class="wk" x="147.3" y="66.82" width="2.04" height="1.18"/>
+<rect class="wk" x="150.34" y="57.82" width="2.04" height="10.18"/>
+<rect class="wk" x="153.37" y="63.26" width="2.04" height="4.74"/>
+<rect class="wk" x="156.41" y="63.03" width="2.04" height="4.97"/>
+<rect class="wk" x="159.45" y="63.74" width="2.04" height="4.26"/>
+<rect class="wk" x="162.49" y="52.37" width="2.04" height="15.63"/>
+<rect class="wk" x="165.52" y="65.39" width="2.04" height="2.61"/>
+<rect class="wk" x="168.56" y="67" width="2.04" height="1"/>
+<rect class="wk" x="171.6" y="63.03" width="2.04" height="4.97"/>
+<rect class="wk" x="174.64" y="63.5" width="2.04" height="4.5"/>
+<rect class="wk" x="177.68" y="67" width="2.04" height="1"/>
+<rect class="wk" x="180.71" y="62.08" width="2.04" height="5.92"/>
+<rect class="wk" x="183.75" y="58.05" width="2.04" height="9.95"/>
+<rect class="wk" x="186.79" y="62.79" width="2.04" height="5.21"/>
+<rect class="wk" x="189.83" y="65.87" width="2.04" height="2.13"/>
+<rect class="wk" x="192.86" y="67" width="2.04" height="1"/>
+<rect class="wk" x="195.9" y="67" width="2.04" height="1"/>
+<rect class="wk" x="198.94" y="64.92" width="2.04" height="3.08"/>
+<rect class="wk" x="201.98" y="55.21" width="2.04" height="12.79"/>
+<rect class="wk" x="205.02" y="50" width="2.04" height="18"/>
+<rect class="wk" x="208.05" y="67" width="2.04" height="1"/>
+<text class="m" x="222.09" y="63.5">langs</text>
+<clipPath id="bgp-strip-strip-dark"><rect x="263.34" y="56" width="160" height="6" rx="3"/></clipPath>
+<g clip-path="url(#bgp-strip-strip-dark)" opacity="0.75">
+<rect x="263.34" y="56" width="67.52" height="6" fill="#e34c26"/>
+<rect x="330.86" y="56" width="50.4" height="6" fill="#3572A5"/>
+<rect x="381.26" y="56" width="21.12" height="6" fill="#3178c6"/>
+<rect x="402.38" y="56" width="8.64" height="6" fill="#3D6117"/>
+<rect x="411.02" y="56" width="12.32" height="6" fill="#8b949e"/>
+</g>
+<text class="m" x="435.34" y="63.5">HTML · Python · TypeScript</text>
+</svg>

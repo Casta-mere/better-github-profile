@@ -1,0 +1,10 @@
+name = "better-github-profile-usage"
+main = "src/index.ts"
+compatibility_date = "2026-11-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "bgp-usage"
+# Owner step: run `wrangler d1 create bgp-usage` and paste the id it prints here.
+# Then create the table with `wrangler d1 execute bgp-usage --remote --file schema.sql`.
+database_id = ""
