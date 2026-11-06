@@ -1,0 +1,77 @@
+{
+  "data": {
+    "viewer": {
+      "repositories": {
+        "pageInfo": { "hasNextPage": false, "endCursor": "Y3Vyc29yOnYyOpHOAAAAyA==" },
+        "nodes": [
+          {
+            "name": "Dash-Board",
+            "isPrivate": false,
+            "stargazerCount": 2,
+            "forkCount": 0,
+            "primaryLanguage": { "name": "TypeScript" },
+            "languages": {
+              "edges": [
+                { "size": 15421, "node": { "name": "TypeScript", "color": "#3178c6" } },
+                { "size": 333, "node": { "name": "JavaScript", "color": "#f1e05a" } },
+                { "size": 320, "node": { "name": "CSS", "color": "#663399" } }
+              ]
+            }
+          },
+          {
+            "name": "CPP-Ticket",
+            "isPrivate": false,
+            "stargazerCount": 2,
+            "forkCount": 0,
+            "primaryLanguage": { "name": "TypeScript" },
+            "languages": {
+              "edges": [
+                { "size": 37466, "node": { "name": "TypeScript", "color": "#3178c6" } },
+                { "size": 20834, "node": { "name": "Python", "color": "#3572A5" } },
+                { "size": 751, "node": { "name": "Dockerfile", "color": "#384d54" } }
+              ]
+            }
+          },
+          {
+            "name": "Safehome",
+            "isPrivate": false,
+            "stargazerCount": 1,
+            "forkCount": 0,
+            "primaryLanguage": { "name": "HTML" },
+            "languages": {
+              "edges": [
+                { "size": 124969, "node": { "name": "HTML", "color": "#e34c26" } },
+                { "size": 71545, "node": { "name": "Python", "color": "#3572A5" } },
+                { "size": 20858, "node": { "name": "SCSS", "color": "#c6538c" } }
+              ]
+            }
+          },
+          {
+            "name": "fzf_scripts",
+            "isPrivate": false,
+            "stargazerCount": 1,
+            "forkCount": 0,
+            "primaryLanguage": { "name": "Shell" },
+            "languages": { "edges": [{ "size": 14203, "node": { "name": "Shell", "color": "#89e051" } }] }
+          },
+          {
+            "name": "Diary",
+            "isPrivate": true,
+            "stargazerCount": 0,
+            "forkCount": 0,
+            "primaryLanguage": null,
+            "languages": { "edges": [] }
+          },
+          {
+            "name": "perl-notes",
+            "isPrivate": false,
+            "stargazerCount": 0,
+            "forkCount": 0,
+            "primaryLanguage": { "name": "Pod" },
+            "languages": { "edges": [{ "size": 1580, "node": { "name": "Pod", "color": null } }] }
+          }
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "data": {
+    "viewer": {
+      "repositories": {
+        "pageInfo": { "hasNextPage": true, "endCursor": "Y3Vyc29yOnYyOpHOAAAAZA==" },
+        "nodes": [
+          {
+            "name": "LaTeX-GraduationTemplate",
+            "isPrivate": false,
+            "stargazerCount": 5,
+            "forkCount": 1,
+            "primaryLanguage": { "name": "TeX" },
+            "languages": { "edges": [{ "size": 21232, "node": { "name": "TeX", "color": "#3D6117" } }] }
+          },
+          {
+            "name": "Read-Book",
+            "isPrivate": false,
+            "stargazerCount": 4,
+            "forkCount": 2,
+            "primaryLanguage": { "name": "TeX" },
+            "languages": {
+              "edges": [
+                { "size": 115358, "node": { "name": "TeX", "color": "#3D6117" } },
+                { "size": 85536, "node": { "name": "HTML", "color": "#e34c26" } },
+                { "size": 66103, "node": { "name": "Python", "color": "#3572A5" } }
+              ]
+            }
+          },
+          {
+            "name": "stealth-startup",
+            "isPrivate": true,
+            "stargazerCount": 50,
+            "forkCount": 3,
+            "primaryLanguage": { "name": "Python" },
+            "languages": {
+              "edges": [
+                { "size": 90000, "node": { "name": "Python", "color": "#3572A5" } },
+                { "size": 4000, "node": { "name": "Shell", "color": "#89e051" } }
+              ]
+            }
+          },
+          {
+            "name": "upstream-fork",
+            "isPrivate": false,
+            "stargazerCount": 9,
+            "forkCount": 0,
+            "primaryLanguage": { "name": "JavaScript" },
+            "languages": { "edges": [{ "size": 50000, "node": { "name": "JavaScript", "color": "#f1e05a" } }] }
+          },
+          {
+            "name": "My-Website",
+            "isPrivate": false,
+            "stargazerCount": 3,
+            "forkCount": 0,
+            "primaryLanguage": { "name": "TypeScript" },
+            "languages": {
+              "edges": [
+                { "size": 228655, "node": { "name": "TypeScript", "color": "#3178c6" } },
+                { "size": 144119, "node": { "name": "MDX", "color": "#fcb32c" } },
+                { "size": 27621, "node": { "name": "JavaScript", "color": "#f1e05a" } }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  }
+}
