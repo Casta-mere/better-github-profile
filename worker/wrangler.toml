@@ -15,3 +15,18 @@ database_id = "960e24c2-5e4a-420c-a38d-32f2c30d6e55"
 name = "CHECK_LIMIT"
 namespace_id = "1001"
 simple = { limit = 60, period = 60 }
+
+# "Sign in with GitHub" (/auth/start, /auth/callback) sends the browser back here, or to a
+# page under it (or to http://localhost / http://127.0.0.1 for local `vite` dev).
+#
+# One-time setup by the owner, until then sign-in answers `?auth=unavailable`:
+# 1. Register a GitHub OAuth App (Settings → Developer settings → OAuth Apps → New OAuth App):
+#    - Homepage URL: https://casta-mere.github.io/better-github-profile/ (SITE_URL)
+#    - Authorization callback URL:
+#      https://better-github-profile-usage.castamerego.workers.dev/auth/callback
+#    No scopes are ever asked for: the Worker reads the public login and revokes the token.
+# 2. Put its two credentials as secrets:
+#      wrangler secret put GITHUB_CLIENT_ID
+#      wrangler secret put GITHUB_CLIENT_SECRET
+[vars]
+SITE_URL = "https://casta-mere.github.io/better-github-profile/"
