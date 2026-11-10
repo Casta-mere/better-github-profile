@@ -151,11 +151,10 @@ describe('checkSetup', () => {
     expect(fetch.calls).not.toContain(`https://api.github.com${annotations(70)}`);
   });
 
-  it('a run that ended cancelled (or similar) counts as failed, other', async () => {
+  it('a run that ended cancelled (or similar) is reported with its conclusion', async () => {
     expect(await check(withWorkflow({ [RUNS]: run('completed', 'cancelled') }))).toEqual({
-      kind: 'failed',
-      cause: 'other',
-      message: 'The run ended as "cancelled".',
+      kind: 'ended',
+      conclusion: 'cancelled',
       runUrl: RUN_URL,
     });
   });

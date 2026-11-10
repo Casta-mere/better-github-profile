@@ -2,10 +2,11 @@ import { rawFileUrl, WORKFLOW_PATH } from '../src/snippets/index';
 
 /**
  * The selector page's setup check: GitHub REST calls from the browser, read into a verdict.
- * Pure apart from the injected `fetch`, so every branch is tested with canned answers. The
- * page sends them through the usage Worker's GitHub proxy (`proxied`), falling back to
- * unauthenticated calls. Secrets can't be read without admin rights, so the check reads the
- * latest workflow run instead.
+ * Pure apart from the injected `fetch`, so every branch is tested with canned answers. No
+ * wording either: the page puts each verdict in the visitor's language. The page sends the
+ * calls through the usage Worker's GitHub proxy (`proxied`), falling back to unauthenticated
+ * calls. Secrets can't be read without admin rights, so the check reads the latest workflow
+ * run instead.
  */
 
 export type Fetch = (url: string, init?: RequestInit) => Promise<Response>;
@@ -30,6 +31,8 @@ export type CheckResult =
   | { kind: 'running'; runUrl: string }
   /** `message`: the run's most telling error annotation, or null when it has none. */
   | { kind: 'failed'; cause: FailureCause; message: string | null; runUrl: string }
+  /** The run completed as neither a success nor a failure: GitHub's `conclusion`, e.g. `cancelled`. */
+  | { kind: 'ended'; conclusion: string; runUrl: string }
   /** `stale`: the run's "Using last good snapshot" warning, or null for fresh cards. */
   | { kind: 'ready'; runUrl: string; previewUrl: string | null; stale: string | null }
   | { kind: 'no-snapshot'; runUrl: string }
@@ -235,9 +238,7 @@ export function checkSetup(user: string, branch: string, outputDir: string, fetc
     if (['failure', 'timed_out', 'startup_failure'].includes(conclusion)) {
       return { kind: 'failed', ...classify(await runAnnotations(fetch, repo, runId, true)), runUrl };
     }
-    if (conclusion !== 'success') {
-      return { kind: 'failed', cause: 'other', message: `The run ended as "${conclusion}".`, runUrl };
-    }
+    if (conclusion !== 'success') return { kind: 'ended', conclusion, runUrl };
 
     const dir = outputDir.replace(/^\/+|\/+$/g, '');
     const listing = await get(fetch, `${repo}/contents/${dir}`);

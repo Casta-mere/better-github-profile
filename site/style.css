@@ -91,11 +91,16 @@ pre {
   background: var(--canvas-subtle);
 }
 
+/* One row of 64px; on a phone the language switch and the GitHub link wrap to a second row. */
 .site-header-inner {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  height: 64px;
+  gap: 8px 16px;
+  min-height: 64px;
+  padding-top: 12px;
+  padding-bottom: 12px;
 }
 
 .brand {
@@ -113,11 +118,19 @@ pre {
   font-size: 18px;
   font-weight: 700;
   letter-spacing: -0.02em;
+  white-space: nowrap;
 }
 
 .wordmark .dash {
   color: var(--fg-muted);
   font-weight: 500;
+}
+
+.header-end {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-left: auto;
 }
 
 .header-link {
@@ -164,11 +177,13 @@ pre {
   background: var(--canvas);
 }
 
+/* Wraps on a phone: the actions move under the title instead of running past the edge. */
 .box-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px 12px;
   padding: 8px 8px 8px 16px;
   border-bottom: 1px solid var(--border);
   border-radius: 6px 6px 0 0;
@@ -257,6 +272,7 @@ pre {
 .segmented span {
   display: block;
   padding: 3px 12px;
+  white-space: nowrap;
   border: 1px solid transparent;
   border-radius: 5px;
   color: var(--fg-muted);
@@ -451,9 +467,19 @@ pre {
 
 .box-actions {
   display: flex;
-  flex: none;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+  margin-left: auto;
+}
+
+/* A long repository name wraps inside the button rather than widening the step. */
+.box-actions > .btn {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .step-note {

@@ -15,20 +15,26 @@
           <img src="./logo.svg" width="32" height="32" alt="" />
           <span class="wordmark">better<span class="dash">-</span>github<span class="dash">-</span>profile</span>
         </a>
-        <a class="header-link" href="https://github.com/casta-mere/better-github-profile">GitHub</a>
+        <div class="header-end">
+          <div class="segmented small lang-switch" role="radiogroup" aria-label="Language" data-i18n-attr="aria-label:lang.aria">
+            <label><input type="radio" name="lang" value="en" checked /><span lang="en">English</span></label>
+            <label><input type="radio" name="lang" value="zh-CN" /><span lang="zh-CN">中文</span></label>
+          </div>
+          <a class="header-link" href="https://github.com/casta-mere/better-github-profile">GitHub</a>
+        </div>
       </div>
     </header>
 
     <main class="container">
-      <p class="lede">
+      <p class="lede" data-i18n="lede">
         Stats cards for your GitHub profile README. A workflow in your profile repo rebuilds them daily and commits the
         SVG files, so there is nothing to host. Start with your GitHub username, pick a look, then follow the four steps.
       </p>
 
       <section id="start" class="box user-box" aria-labelledby="username-label">
         <div class="user-box-title">
-          <span id="start-label" class="start-label">Start here</span>
-          <label id="username-label" for="username">Your GitHub username</label>
+          <span id="start-label" class="start-label" data-i18n="start.here">Start here</span>
+          <label id="username-label" for="username" data-i18n="username.label">Your GitHub username</label>
         </div>
         <div class="user-box-row">
           <a id="sign-in" class="btn btn-primary sign-in">
@@ -37,9 +43,9 @@
                 d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"
               />
             </svg>
-            Sign in with GitHub
+            <span data-i18n="signIn.button">Sign in with GitHub</span>
           </a>
-          <span class="or">or type it</span>
+          <span class="or" data-i18n="signIn.or">or type it</span>
           <input
             id="username"
             type="text"
@@ -58,7 +64,7 @@
       <div class="layout">
         <form id="controls" class="box controls" autocomplete="off">
           <fieldset class="group">
-            <legend>Theme</legend>
+            <legend data-i18n="controls.theme">Theme</legend>
             <div class="segmented">
               <label><input type="radio" name="theme" value="native" data-control="theme" checked /><span>native</span></label>
               <label><input type="radio" name="theme" value="strip" data-control="theme" /><span>strip</span></label>
@@ -66,43 +72,43 @@
           </fieldset>
 
           <fieldset class="group">
-            <legend>Cards</legend>
+            <legend data-i18n="controls.cards">Cards</legend>
             <div id="cards" class="checks"></div>
           </fieldset>
 
           <fieldset class="group">
-            <legend>Data</legend>
+            <legend data-i18n="controls.data">Data</legend>
             <label class="switch">
               <input type="checkbox" role="switch" name="includePrivate" data-control="includePrivate" checked />
               <span class="track" aria-hidden="true"></span>
-              <span>Include private work</span>
+              <span data-i18n="controls.includePrivate">Include private work</span>
             </label>
             <label class="switch">
               <input type="checkbox" role="switch" name="includeForks" data-control="includeForks" />
               <span class="track" aria-hidden="true"></span>
-              <span>Include forks</span>
+              <span data-i18n="controls.includeForks">Include forks</span>
             </label>
             <label class="field">
-              <span>Exclude repos</span>
+              <span data-i18n="controls.excludeRepos">Exclude repos</span>
               <input type="text" name="excludeRepos" data-control="excludeRepos" placeholder="dotfiles, old-site" spellcheck="false" />
             </label>
             <label class="field">
-              <span>Exclude languages</span>
+              <span data-i18n="controls.excludeLangs">Exclude languages</span>
               <input type="text" name="excludeLangs" data-control="excludeLangs" placeholder="HTML, Jupyter Notebook" spellcheck="false" />
             </label>
-            <p class="note">
+            <p class="note" data-i18n="controls.listNote">
               Comma-separated. The preview uses fixed sample data, so exclusions only change the workflow.
             </p>
           </fieldset>
 
           <fieldset class="group">
-            <legend>Usage ping</legend>
+            <legend data-i18n="controls.ping">Usage ping</legend>
             <label class="switch">
               <input type="checkbox" role="switch" name="telemetry" data-control="telemetry" checked />
               <span class="track" aria-hidden="true"></span>
-              <span>Usage ping</span>
+              <span data-i18n="controls.ping">Usage ping</span>
             </label>
-            <p class="note">
+            <p class="note" data-i18n="controls.pingNote">
               Sends a hash of your repo ID (pseudonymous, not anonymous), the version and the theme, once per run. Turn
               off to send nothing.
             </p>
@@ -112,56 +118,70 @@
         <div class="main-col">
           <section class="box" aria-labelledby="preview-title">
             <div class="box-header">
-              <h2 id="preview-title">Preview</h2>
-              <div class="segmented small" role="radiogroup" aria-label="Preview mode">
-                <label><input type="radio" name="mode" value="light" /><span>Light</span></label>
-                <label><input type="radio" name="mode" value="dark" /><span>Dark</span></label>
+              <h2 id="preview-title" data-i18n="preview.title">Preview</h2>
+              <div class="segmented small" role="radiogroup" aria-label="Preview mode" data-i18n-attr="aria-label:preview.modeAria">
+                <label><input type="radio" name="mode" value="light" /><span data-i18n="preview.light">Light</span></label>
+                <label><input type="radio" name="mode" value="dark" /><span data-i18n="preview.dark">Dark</span></label>
               </div>
             </div>
             <div id="preview" class="preview"></div>
           </section>
 
-          <p id="links-hint" class="links-hint">
-            <a id="links-hint-link" href="#username">Your GitHub username</a> comes first: the links in these steps go
-            straight into your profile repository, so they turn on once it&rsquo;s found.
+          <p id="links-hint" class="links-hint" data-i18n="linksHint.text">
+            <a id="links-hint-link" href="#username" data-slot="link" data-i18n="linksHint.link">Your GitHub username</a>
+            comes first: the links in these steps go straight into your profile repository, so they turn on once it’s
+            found.
           </p>
 
           <ol class="steps">
             <li class="box step">
               <div class="box-header">
-                <h2><span class="num">1</span><span>Create a token and save it as a secret</span></h2>
+                <h2><span class="num">1</span><span data-i18n="step1.title">Create a token and save it as a secret</span></h2>
               </div>
               <div class="step-body">
-                <p id="token-help" class="note"></p>
+                <p id="token-help" class="note" data-i18n="step1.help">
+                  Create a classic personal access token with the read:user scope (add the repo scope to include private
+                  work) and save it in your profile repository as the Actions secret STATS_TOKEN.
+                </p>
                 <ol class="substeps">
                   <li id="step-1a" class="substep">
                     <span class="sub">1a</span>
                     <div>
-                      <p>
-                        <strong>Create the token.</strong>
-                        <a id="token-link" target="_blank" rel="noopener">Open GitHub&rsquo;s new token page</a>; the scopes
-                        it needs are already ticked: <code>read:user</code><span id="repo-scope">, <code>repo</code></span>.
-                        Click <strong>Generate token</strong> and copy the token.
+                      <p data-i18n="step1a.text">
+                        <strong data-slot="title" data-i18n="step1a.title">Create the token.</strong>
+                        <a id="token-link" data-slot="link" data-i18n="step1a.link" target="_blank" rel="noopener"
+                          >Open GitHub’s new token page</a
+                        >; the scopes it needs are already ticked: <code data-slot="readUser">read:user</code
+                        ><span id="repo-scope" data-slot="repoScope" data-i18n="step1a.repoScope"
+                          >, <code data-slot="repo">repo</code></span
+                        >. Click <strong data-slot="generate">Generate token</strong> and copy the token.
                       </p>
-                      <p class="tip">
-                        Tip: set <strong>Expiration</strong> to <strong>No expiration</strong>. If the token expires, the
-                        cards are kept but marked stale until you add a new one.
+                      <p class="tip" data-i18n="step1a.tip">
+                        Tip: set <strong data-slot="expiration">Expiration</strong> to
+                        <strong data-slot="noExpiration">No expiration</strong>. If the token expires, the cards are kept
+                        but marked stale until you add a new one.
                       </p>
                     </div>
                   </li>
                   <li id="step-1b" class="substep optional">
                     <span class="sub">1b</span>
                     <div>
-                      <p>
-                        <span class="badge">optional</span>
-                        <strong>Only if you belong to an organization that uses SAML SSO</strong>, for example your
-                        employer. On <a href="https://github.com/settings/tokens" target="_blank" rel="noopener">github.com/settings/tokens</a>,
-                        open <strong>Configure SSO</strong> next to the token and <strong>Authorize</strong> the
-                        organization. Otherwise that organization&rsquo;s private contributions aren&rsquo;t counted as yours.
+                      <p data-i18n="step1b.text">
+                        <span class="badge" data-slot="optional" data-i18n="step1b.optional">optional</span>
+                        <strong data-slot="only" data-i18n="step1b.only">Only if you belong to an organization that uses SAML SSO</strong>,
+                        for example your employer. On
+                        <a data-slot="tokens" href="https://github.com/settings/tokens" target="_blank" rel="noopener"
+                          >github.com/settings/tokens</a
+                        >, open <strong data-slot="configureSso">Configure SSO</strong> next to the token and
+                        <strong data-slot="authorize">Authorize</strong> the organization. Otherwise that organization’s
+                        private contributions aren’t counted as yours.
                       </p>
-                      <p class="tip">
+                      <p class="tip" data-i18n="step1b.docs">
                         GitHub Docs:
                         <a
+                          data-slot="link"
+                          data-i18n="step1b.docsLink"
+                          data-i18n-attr="href:step1b.docsHref"
                           href="https://docs.github.com/en/enterprise-cloud@latest/authentication/authenticating-with-single-sign-on/authorizing-a-personal-access-token-for-use-with-single-sign-on"
                           target="_blank"
                           rel="noopener"
@@ -173,21 +193,30 @@
                   <li id="step-1c" class="substep">
                     <span class="sub">1c</span>
                     <div>
-                      <p>
-                        <strong>Add the secret.</strong>
-                        <a data-repo-link="secretNew" target="_blank" rel="noopener">Open New repository secret</a> in your
-                        profile repository and fill in:
+                      <p data-i18n="step1c.text">
+                        <strong data-slot="title" data-i18n="step1c.title">Add the secret.</strong>
+                        <a data-slot="link" data-i18n="step1c.link" data-repo-link="secretNew" target="_blank" rel="noopener"
+                          >Open New repository secret</a
+                        >
+                        in your profile repository and fill in:
                       </p>
                       <dl class="secret">
-                        <dt>Name</dt>
+                        <dt data-i18n="step1c.name">Name</dt>
                         <dd>
                           <code>STATS_TOKEN</code>
-                          <button type="button" class="btn" data-copy-text="STATS_TOKEN" aria-label="Copy the secret name STATS_TOKEN">
+                          <button
+                            type="button"
+                            class="btn"
+                            data-copy-text="STATS_TOKEN"
+                            aria-label="Copy the secret name STATS_TOKEN"
+                            data-i18n="step1c.copyName"
+                            data-i18n-attr="aria-label:step1c.copyNameAria"
+                          >
                             Copy name
                           </button>
                         </dd>
-                        <dt>Value</dt>
-                        <dd>the token from <a href="#step-1a">1a</a></dd>
+                        <dt data-i18n="step1c.value">Value</dt>
+                        <dd data-i18n="step1c.valueText">the token from <a data-slot="step" href="#step-1a">1a</a></dd>
                       </dl>
                     </div>
                   </li>
@@ -196,7 +225,7 @@
             </li>
             <li class="box step">
               <div class="box-header">
-                <h2><span class="num">2</span><span>Add the workflow</span></h2>
+                <h2><span class="num">2</span><span data-i18n="step2.title">Add the workflow</span></h2>
                 <div class="box-actions">
                   <a
                     id="workflow-new"
@@ -205,8 +234,9 @@
                     data-workflow-show="checking missing trouble"
                     target="_blank"
                     rel="noopener"
+                    data-i18n="step2.add"
                   >
-                    Add workflow to <span data-repo-name>your profile repository</span>
+                    Add workflow to <span data-slot="repo" data-repo-name>your profile repository</span>
                   </a>
                   <a
                     id="workflow-edit"
@@ -216,59 +246,77 @@
                     target="_blank"
                     rel="noopener"
                     hidden
+                    data-i18n="step2.update"
                     >Update workflow</a
                   >
-                  <button type="button" class="btn" data-copy-from="workflow" aria-label="Copy the workflow">Copy</button>
+                  <button
+                    type="button"
+                    class="btn"
+                    data-copy-from="workflow"
+                    aria-label="Copy the workflow"
+                    data-i18n="copy.button"
+                    data-i18n-attr="aria-label:step2.copyAria"
+                  >
+                    Copy
+                  </button>
                 </div>
               </div>
               <div class="step-body">
-                <p class="note" data-workflow-show="checking" hidden>
-                  Checking whether <span data-repo-name>your profile repository</span> already has the workflow&hellip;
+                <p class="note" data-workflow-show="checking" data-i18n="step2.checking" hidden>
+                  Checking whether <span data-slot="repo" data-repo-name>your profile repository</span> already has the
+                  workflow…
                 </p>
-                <p data-workflow-show="missing trouble">
-                  The button opens GitHub&rsquo;s new-file page with the workflow filled in: click
-                  <strong>Commit changes</strong>. Or save it yourself as <code id="workflow-path"></code>.
+                <p data-workflow-show="missing trouble" data-i18n="step2.missing">
+                  The button opens GitHub’s new-file page with the workflow filled in: click
+                  <strong data-slot="commit">Commit changes</strong>. Or save it yourself as
+                  <code id="workflow-path" data-slot="path">.github/workflows/profile-cards.yml</code>.
                 </p>
-                <p data-workflow-show="different" hidden>
-                  <span data-repo-name>Your profile repository</span> already has a different workflow. GitHub can&rsquo;t
-                  fill in an edit: copy the new workflow (<strong>Copy</strong>), open <strong>Update workflow</strong>,
-                  select all in the editor, paste, then <strong>Commit changes</strong>.
+                <p data-workflow-show="different" data-i18n="step2.different" hidden>
+                  <span data-slot="repo" data-repo-name>your profile repository</span> already has a different workflow.
+                  GitHub can’t fill in an edit: copy the new workflow (<strong data-slot="copy" data-i18n="copy.button"
+                    >Copy</strong
+                  >), open <strong data-slot="update" data-i18n="step2.update">Update workflow</strong>, select all in the
+                  editor, paste, then <strong data-slot="commit">Commit changes</strong>.
                 </p>
                 <p data-workflow-show="same" class="workflow-same" data-tone="ok" hidden>
-                  <span>&check; Your workflow is already up to date.</span>
-                  <a class="quiet-link" data-repo-link="workflowEdit" target="_blank" rel="noopener">View it</a>
+                  <span data-i18n="step2.same">✓ Your workflow is already up to date.</span>
+                  <a class="quiet-link" data-repo-link="workflowEdit" data-i18n="step2.view" target="_blank" rel="noopener"
+                    >View it</a
+                  >
                 </p>
                 <p id="workflow-trouble" class="note" data-workflow-show="trouble" hidden></p>
-                <p class="note" data-workflow-show="same different" hidden>
-                  Cards from a previous theme stay in <code>cards/</code>; delete them if you like.
+                <p class="note" data-workflow-show="same different" data-i18n="step2.oldCards" hidden>
+                  Cards from a previous theme stay in <code data-slot="dir">cards/</code>; delete them if you like.
                 </p>
               </div>
               <pre><code id="workflow"></code></pre>
             </li>
             <li class="box step">
               <div class="box-header">
-                <h2><span class="num">3</span><span>Run it and check</span></h2>
+                <h2><span class="num">3</span><span data-i18n="step3.title">Run it and check</span></h2>
               </div>
               <div class="step-body">
-                <p>
-                  <a data-repo-link="workflowPage" target="_blank" rel="noopener">Run the workflow</a>: click
-                  <strong>Run workflow</strong> there, and wait about a minute. Then check the setup.
+                <p data-i18n="step3.text">
+                  <a data-slot="link" data-i18n="step3.link" data-repo-link="workflowPage" target="_blank" rel="noopener"
+                    >Run the workflow</a
+                  >: click <strong data-slot="run">Run workflow</strong> there, and wait about a minute. Then check the
+                  setup.
                 </p>
                 <div class="step-actions">
-                  <button type="button" id="check-setup" class="btn btn-primary">Check setup</button>
+                  <button type="button" id="check-setup" class="btn btn-primary" data-i18n="check.button">Check setup</button>
                 </div>
                 <div id="check-result" class="check-result" role="status" hidden></div>
-                <p class="note">
-                  The secret itself can&rsquo;t be checked: GitHub only shows secrets to a logged-in admin, so the check
-                  looks at the workflow run instead.
+                <p class="note" data-i18n="step3.note">
+                  The secret itself can’t be checked: GitHub only shows secrets to a logged-in admin, so the check looks at
+                  the workflow run instead.
                 </p>
               </div>
             </li>
             <li class="box step">
               <div class="box-header">
-                <h2><span class="num">4</span><span>Paste into <code>README.md</code></span></h2>
+                <h2><span class="num">4</span><span data-i18n="step4.title">Paste into <code data-slot="file">README.md</code></span></h2>
                 <div class="box-actions">
-                  <div class="segmented small" role="radiogroup" aria-label="README format">
+                  <div class="segmented small" role="radiogroup" aria-label="README format" data-i18n-attr="aria-label:step4.formatAria">
                     <label>
                       <input type="radio" name="readmeFormat" value="picture" data-control="readmeFormat" checked />
                       <span>&lt;picture&gt;</span>
@@ -278,23 +326,34 @@
                       <span>Markdown</span>
                     </label>
                   </div>
-                  <button type="button" class="btn" data-copy-from="readme" aria-label="Copy the README markup">Copy</button>
+                  <button
+                    type="button"
+                    class="btn"
+                    data-copy-from="readme"
+                    aria-label="Copy the README markup"
+                    data-i18n="copy.button"
+                    data-i18n-attr="aria-label:step4.copyAria"
+                  >
+                    Copy
+                  </button>
                 </div>
               </div>
               <div class="step-body">
-                <p>
+                <p data-i18n="step4.text">
                   Once the check says the cards are ready, so the images exist:
-                  <a data-repo-link="readmeEdit" target="_blank" rel="noopener">Edit <code>README.md</code></a>, paste
-                  the markup and commit. GitHub can&rsquo;t fill in an edit, so copy the markup first.
+                  <a data-slot="link" data-i18n="step4.link" data-repo-link="readmeEdit" target="_blank" rel="noopener"
+                    >Edit <code data-slot="file">README.md</code></a
+                  >, paste the markup and commit. GitHub can’t fill in an edit, so copy the markup first.
                 </p>
-                <p class="note" data-workflow-show="different" hidden>
+                <p class="note" data-workflow-show="different" data-i18n="step4.replace" hidden>
                   Changing the theme or cards also changes the file names: replace the README markup too.
                 </p>
               </div>
               <pre><code id="readme"></code></pre>
-              <p id="readme-note" class="note step-note" hidden>
-                GitHub has deprecated the <code>#gh-light-mode-only</code> / <code>#gh-dark-mode-only</code> fragments in
-                favor of <code>&lt;picture&gt;</code>. They still work, but may stop.
+              <p id="readme-note" class="note step-note" data-i18n="step4.deprecated" hidden>
+                GitHub has deprecated the <code data-slot="light">#gh-light-mode-only</code> /
+                <code data-slot="dark">#gh-dark-mode-only</code> fragments in favor of
+                <code data-slot="picture">&lt;picture&gt;</code>. They still work, but may stop.
               </p>
             </li>
           </ol>
@@ -302,7 +361,7 @@
       </div>
     </main>
 
-    <footer class="container site-footer">
+    <footer class="container site-footer" data-i18n="footer">
       The preview renders a fixed sample snapshot with the same code the Action runs.
     </footer>
 

@@ -6,7 +6,6 @@ import {
   outputDirOf,
   profileRepoLinks,
   readmeSnippet,
-  TOKEN_HELP,
   tokenUrl,
   WORKFLOW_PATH,
   workflowYaml,
@@ -23,6 +22,8 @@ import {
   type RepoLookup,
   type Trouble,
 } from './check';
+import { nodes, translateElement, translatePage } from './i18n/dom';
+import { detectLang, getLang, setLang, t, toLang, withLang, type Key, type Lang } from './i18n/index';
 import { readLanding, signInUrl, withoutLanding, type AuthOutcome } from './landing';
 import sample from './sample-snapshot.json';
 import { applyControl } from './state';
@@ -75,7 +76,7 @@ function renderCardChecks(): void {
     input.checked = setup.cards.includes(input.dataset.card ?? '');
     // The last card can't be unchecked; say so instead of silently re-checking it.
     input.disabled = onlyOne && input.checked;
-    input.parentElement!.title = input.disabled ? 'At least one card stays selected' : '';
+    input.parentElement!.title = input.disabled ? t('controls.lastCard') : '';
   }
 }
 
@@ -140,13 +141,11 @@ for (const radio of document.querySelectorAll<HTMLInputElement>('input[name="mod
   });
 }
 
-function flash(button: HTMLButtonElement, text: string): void {
-  const original = button.dataset.label ?? button.textContent?.trim() ?? '';
-  button.dataset.label = original;
-  button.textContent = text;
+function flash(button: HTMLButtonElement, key: 'copy.copied' | 'copy.selected' | 'copy.failed'): void {
+  button.textContent = t(key);
   button.classList.add('done');
   window.setTimeout(() => {
-    button.textContent = original;
+    translateElement(button); // its label again, in the language of the moment
     button.classList.remove('done');
   }, 1500);
 }
@@ -167,27 +166,24 @@ document.addEventListener('click', async (e) => {
   const text = source ? (source.textContent ?? '') : (button.dataset.copyText ?? '');
   try {
     await navigator.clipboard.writeText(text);
-    flash(button, 'Copied');
+    flash(button, 'copy.copied');
   } catch {
     // No clipboard access (e.g. an insecure origin): select the text so ⌘C / Ctrl+C works.
     if (source) selectContents(source);
-    flash(button, source ? 'Selected' : 'Copy failed');
+    flash(button, source ? 'copy.selected' : 'copy.failed');
   }
 });
 
 // --- Profile repository: username, lookup, direct links ---
 
 const USERNAME_KEY = 'better-github-profile:username';
-const NO_USER_HINT = 'Enter your username to get direct links';
-/** Tooltip of a repo link that waits for the lookup (or for the repository to exist). */
-const NO_REPO_HINT = 'Turns on once your profile repository is found';
 
 /** What the user status line says after `?auth=…`, until the user types. */
-const AUTH_NOTICES: Record<AuthOutcome, string> = {
-  cancelled: 'Sign-in cancelled. Type your username instead.',
-  failed: 'Sign-in didn’t work. Type your username, or try signing in again.',
-  unavailable: 'Sign-in isn’t available right now. Type your username instead.',
-};
+const AUTH_NOTICES = {
+  cancelled: 'auth.cancelled',
+  failed: 'auth.failed',
+  unavailable: 'auth.unavailable',
+} as const satisfies Record<AuthOutcome, Key>;
 
 const userBox = el('#start');
 const startLabel = el('#start-label');
@@ -211,7 +207,7 @@ const inFlight = new Map<string, Promise<RepoLookup>>();
 /** The name is looked up on Enter, on leaving the field, or after a pause: never per keystroke. */
 const typingPause = whenTypingStops(() => void lookUp());
 /** Why sign-in came back without a login (`?auth=…`): shown in the status line until the user types. */
-let authNotice: string | null = null;
+let authNotice: AuthOutcome | null = null;
 
 /**
  * `<owner>/<owner>` and the branch the repo links use, once the lookup has an answer: the
@@ -254,10 +250,10 @@ function retryButton(label: string): HTMLButtonElement {
   return b;
 }
 
-function troubleText(t: Trouble): string {
-  if (t.kind === 'rate-limited') return 'GitHub’s hourly limit was reached; try again later.';
-  if (t.kind === 'network-error') return 'Couldn’t reach GitHub. Check your connection and try again.';
-  return `GitHub answered HTTP ${t.status}. Try again later.`;
+function troubleText(trouble: Trouble): string {
+  if (trouble.kind === 'rate-limited') return t('trouble.rateLimited');
+  if (trouble.kind === 'network-error') return t('trouble.network');
+  return t('trouble.http', { status: trouble.status });
 }
 
 function renderRepoLinks(): void {
@@ -270,7 +266,8 @@ function renderRepoLinks(): void {
     if (href === null) {
       a.removeAttribute('href');
       a.setAttribute('aria-disabled', 'true');
-      a.title = valid ? NO_REPO_HINT : NO_USER_HINT;
+      // Tooltip of a repo link that waits for a username, or for the lookup (or the repository) to exist.
+      a.title = valid ? t('user.noRepo') : t('user.noUser');
     } else {
       a.href = href;
       a.removeAttribute('aria-disabled');
@@ -278,12 +275,12 @@ function renderRepoLinks(): void {
     }
   }
   for (const name of document.querySelectorAll('[data-repo-name]')) {
-    name.textContent = target ? `${target.owner}/${target.owner}` : 'your profile repository';
+    name.textContent = target ? `${target.owner}/${target.owner}` : t('repo.yours');
   }
   linksHint.hidden = target !== null;
   // The check looks the repository up itself (and says when it is missing): any valid name will do.
   checkButton.disabled = !valid || checkButton.dataset.busy === 'true';
-  checkButton.title = valid ? '' : NO_USER_HINT;
+  checkButton.title = valid ? '' : t('user.noUser');
   renderWorkflowState();
 }
 
@@ -292,51 +289,51 @@ function renderUserStatus(): void {
   const found = isGitHubUsername(username) && lookup !== null && lookup !== 'pending' && lookup.kind === 'found';
   // The box stops shouting once its job is done.
   userBox.classList.toggle('done', found);
-  startLabel.textContent = found ? 'Done' : 'Start here';
+  startLabel.dataset.i18n = found ? 'start.done' : 'start.here';
+  translateElement(startLabel);
   userStatus.dataset.tone = '';
   usernameInput.removeAttribute('aria-invalid');
   if (authNotice !== null) {
     if (username !== '' && !isGitHubUsername(username)) usernameInput.setAttribute('aria-invalid', 'true');
     userStatus.dataset.tone = 'warn';
-    userStatus.replaceChildren(authNotice);
+    userStatus.replaceChildren(t(AUTH_NOTICES[authNotice]));
   } else if (username === '') {
-    userStatus.replaceChildren(`${NO_USER_HINT}.`);
+    userStatus.replaceChildren(t('user.empty'));
   } else if (typingPause.typing && lookup === null) {
-    userStatus.replaceChildren('Looking up when you stop typing…');
+    userStatus.replaceChildren(t('user.waiting'));
   } else if (!isGitHubUsername(username)) {
     usernameInput.setAttribute('aria-invalid', 'true');
     userStatus.dataset.tone = 'err';
-    userStatus.replaceChildren(`That isn’t a valid GitHub username. ${NO_USER_HINT}.`);
+    userStatus.replaceChildren(t('user.invalid'));
   } else if (lookup === null || lookup === 'pending') {
-    userStatus.replaceChildren('Looking up ', code(repoName), '…');
+    userStatus.replaceChildren(...nodes('user.lookingUp', { repo: code(repoName) }));
   } else if (lookup.kind === 'found') {
     const name = `${lookup.owner}/${lookup.owner}`;
     userStatus.dataset.tone = 'ok';
     userStatus.replaceChildren(
-      'Found ',
-      link(profileRepoLinks(lookup.owner, lookup.branch).repo, code(name)),
-      ' (branch ',
-      code(lookup.branch),
-      '). The links below go straight into it.',
+      ...nodes('user.found', {
+        repo: link(profileRepoLinks(lookup.owner, lookup.branch).repo, code(name)),
+        branch: code(lookup.branch),
+      }),
     );
   } else if (lookup.kind === 'missing') {
     userStatus.dataset.tone = 'warn';
     userStatus.replaceChildren(
-      'No repository named ',
-      code(repoName),
-      ' yet. ',
-      link(profileRepoLinks(username, 'main').newRepo, 'Create it'),
-      ' (public, named exactly like your username), then ',
-      retryButton('look again'),
-      '.',
+      ...nodes('user.missing', {
+        repo: code(repoName),
+        create: link(profileRepoLinks(username, 'main').newRepo, t('repo.create')),
+        retry: retryButton(t('retry.inline')),
+      }),
     );
   } else {
     userStatus.dataset.tone = 'warn';
     userStatus.replaceChildren(
-      `Couldn’t look up ${repoName}: ${troubleText(lookup)} The links assume the branch `,
-      code('main'),
-      '. ',
-      retryButton('Look again'),
+      ...nodes('user.trouble', {
+        repo: repoName,
+        trouble: troubleText(lookup),
+        main: code('main'),
+        retry: retryButton(t('retry.button')),
+      }),
     );
   }
 }
@@ -382,6 +379,7 @@ async function lookUp(): Promise<RepoLookup | null> {
 }
 
 function clearCheck(): void {
+  checkView = null;
   checkResult.hidden = true;
   checkResult.replaceChildren();
 }
@@ -485,15 +483,16 @@ function renderWorkflowState(): void {
     const add = el<HTMLAnchorElement>('#workflow-new');
     add.removeAttribute('href');
     add.setAttribute('aria-disabled', 'true');
-    add.title = 'Checking whether the workflow already exists';
+    add.title = t('step2.checkingTitle');
   }
   if (view === 'trouble' && target !== null && file !== undefined && file.kind !== 'found' && file.kind !== 'missing') {
     // Add stays the button; Update is offered here, so the header keeps two buttons on a phone.
     el('#workflow-trouble').replaceChildren(
-      `Couldn’t check whether the workflow already exists: ${troubleText(file)} If it does, `,
-      link(profileRepoLinks(target.owner, target.branch).workflowEdit, 'update it'),
-      ' instead (copy, select all in the editor, paste, commit). ',
-      retryButton('Look again'),
+      ...nodes('step2.trouble', {
+        trouble: troubleText(file),
+        update: link(profileRepoLinks(target.owner, target.branch).workflowEdit, t('step2.updateIt')),
+        retry: retryButton(t('retry.button')),
+      }),
     );
   }
   for (const node of document.querySelectorAll<HTMLElement>('[data-workflow-show]')) {
@@ -505,10 +504,21 @@ function renderWorkflowState(): void {
 
 type Tone = 'ok' | 'warn' | 'err' | 'info';
 
-function showCheck(tone: Tone, lines: (string | Node)[][], extra: Node[] = []): void {
+/** Draws the last check's result: run again on a language switch. Null while none is shown. */
+let checkView: (() => void) | null = null;
+
+/** Shows a check's result, drawn by `draw` now and again in each language switched to. */
+function showCheckView(draw: () => void): void {
+  checkView = draw;
+  draw();
+}
+
+/** The check result box: one headline, more lines, then `extra` (a preview) and the time of the check. */
+function showCheck(tone: Tone, at: Date, lines: (string | Node)[][], extra: Node[] = []): void {
   const time = document.createElement('span');
   time.className = 'checked-at';
-  time.textContent = `Checked ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
+  const clock = at.toLocaleTimeString(getLang(), { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  time.textContent = t('check.at', { time: clock });
   checkResult.dataset.tone = tone;
   checkResult.replaceChildren(
     ...lines.map((parts, i) => {
@@ -526,7 +536,7 @@ function showCheck(tone: Tone, lines: (string | Node)[][], extra: Node[] = []): 
 function stepLink(step: string): HTMLAnchorElement {
   const a = document.createElement('a');
   a.href = `#step-${step}`;
-  a.textContent = `step ${step}`;
+  a.textContent = t('check.step', { step });
   return a;
 }
 
@@ -536,39 +546,37 @@ function strong(text: string): HTMLElement {
   return b;
 }
 
-function renderCheck(result: CheckResult, owner: string, branch: string): void {
+/** A check's verdict for `<owner>/<owner>` in words, as of `at`; `output` is the cards folder it looked in. */
+function renderCheck(result: CheckResult, owner: string, branch: string, output: string, at: Date): void {
   const links = profileRepoLinks(owner, branch);
-  const runLink = (url: string) => link(url, 'Open the run');
-  const output = outputDirOf(setup);
+  const runLink = (url: string) => link(url, t('check.openRun'));
   switch (result.kind) {
     case 'no-workflow':
-      return showCheck('err', [['Workflow file not found. Do step 2.']]);
+      return showCheck('err', at, [[t('check.noWorkflow')]]);
     case 'not-run':
-      return showCheck('info', [['Not run yet: click ', link(links.workflowPage, strong('Run workflow')), '.']]);
+      return showCheck('info', at, [nodes('check.notRun', { run: link(links.workflowPage, strong('Run workflow')) })]);
     case 'running':
-      return showCheck('info', [['Running… check again in a minute. ', runLink(result.runUrl)]]);
+      return showCheck('info', at, [nodes('check.running', { run: runLink(result.runUrl) })]);
     case 'failed': {
       const why =
         result.cause === 'secret-missing'
-          ? ['The run failed: the token secret is missing. Add the ', code('STATS_TOKEN'), ' secret (', stepLink('1c'), '), then run again.']
+          ? nodes('check.secretMissing', { secret: code('STATS_TOKEN'), step: stepLink('1c') })
           : result.cause === 'token-rejected'
-            ? [
-                'The run failed: GitHub rejected the token. It is invalid or expired, or is missing scopes. Create a new one (',
-                stepLink('1a'),
-                '), save it as ',
-                code('STATS_TOKEN'),
-                ' (',
-                stepLink('1c'),
-                '), then run again.',
-              ]
-            : [result.message === null ? 'The run failed.' : 'The run failed:'];
+            ? nodes('check.tokenRejected', { step1a: stepLink('1a'), secret: code('STATS_TOKEN'), step1c: stepLink('1c') })
+            : [result.message === null ? t('check.failed') : t('check.failedWhy')];
       const detail = result.cause === 'other' && result.message !== null ? [[result.message]] : [];
-      return showCheck('err', [why, ...detail, [runLink(result.runUrl)]]);
+      return showCheck('err', at, [why, ...detail, [runLink(result.runUrl)]]);
     }
+    case 'ended':
+      return showCheck('err', at, [
+        [t('check.failedWhy')],
+        [t('check.ended', { conclusion: result.conclusion })],
+        [runLink(result.runUrl)],
+      ]);
     case 'no-snapshot':
-      return showCheck('warn', [
-        ['The run succeeded, but ', code(`${output}/snapshot.json`), ' isn’t in the repository.'],
-        ['Open the run to see what it did: ', runLink(result.runUrl)],
+      return showCheck('warn', at, [
+        nodes('check.noSnapshot', { file: code(`${output}/snapshot.json`) }),
+        nodes('check.noSnapshotRun', { run: runLink(result.runUrl) }),
       ]);
     case 'ready': {
       const preview: Node[] = [];
@@ -576,22 +584,25 @@ function renderCheck(result: CheckResult, owner: string, branch: string): void {
         const img = document.createElement('img');
         img.className = 'check-preview';
         img.src = result.previewUrl;
-        img.alt = 'Your card, as committed';
+        img.alt = t('check.previewAlt');
         preview.push(img);
       }
+      // `stale` is the Action's own warning: it stays as the run wrote it.
       const lines: (string | Node)[][] =
         result.stale === null
-          ? [['Cards are ready. Paste the README markup (step 4).'], [runLink(result.runUrl)]]
-          : [
-              ['Cards are ready, but marked stale: the last run couldn’t fetch fresh data.'],
-              [result.stale],
-              [runLink(result.runUrl)],
-            ];
-      return showCheck(result.stale === null ? 'ok' : 'warn', lines, preview);
+          ? [[t('check.ready')], [runLink(result.runUrl)]]
+          : [[t('check.readyStale')], [result.stale], [runLink(result.runUrl)]];
+      return showCheck(result.stale === null ? 'ok' : 'warn', at, lines, preview);
     }
     default:
-      return showCheck(result.kind === 'rate-limited' ? 'warn' : 'err', [[troubleText(result)]]);
+      return showCheck(result.kind === 'rate-limited' ? 'warn' : 'err', at, [[troubleText(result)]]);
   }
+}
+
+/** The check button's label: `check.busy` while a check runs. Kept as its key, so a switch keeps it. */
+function setCheckLabel(key: 'check.button' | 'check.busy'): void {
+  checkButton.dataset.i18n = key;
+  translateElement(checkButton);
 }
 
 checkButton.addEventListener('click', async () => {
@@ -599,31 +610,80 @@ checkButton.addEventListener('click', async () => {
   if (!isGitHubUsername(user)) return;
   checkButton.dataset.busy = 'true';
   checkButton.disabled = true;
-  checkButton.textContent = 'Checking…';
+  setCheckLabel('check.busy');
   try {
     // A missing repository may have been created since: look again rather than trust the cache.
     if (lookup !== null && lookup !== 'pending' && lookup.kind !== 'found') lookups.delete(user.toLowerCase());
     const repo = await lookUp();
     if (repo === null || username !== user) return;
     if (repo.kind === 'missing') {
-      showCheck('err', [
-        ['No repository named ', code(`${user}/${user}`), ' yet. ', link(profileRepoLinks(user, 'main').newRepo, 'Create it'), ' first.'],
-      ]);
+      const at = new Date();
+      showCheckView(() =>
+        showCheck('err', at, [
+          nodes('check.repoMissing', {
+            repo: code(`${user}/${user}`),
+            create: link(profileRepoLinks(user, 'main').newRepo, t('repo.create')),
+          }),
+        ]),
+      );
       return;
     }
     if (repo.kind !== 'found') {
-      showCheck(repo.kind === 'rate-limited' ? 'warn' : 'err', [[troubleText(repo)]]);
+      const at = new Date();
+      showCheckView(() => showCheck(repo.kind === 'rate-limited' ? 'warn' : 'err', at, [[troubleText(repo)]]));
       return;
     }
     void loadWorkflowFile(repo.owner, true);
-    const result = await checkSetup(repo.owner, repo.branch, outputDirOf(setup), api);
-    if (username === user) renderCheck(result, repo.owner, repo.branch);
+    const output = outputDirOf(setup);
+    const result = await checkSetup(repo.owner, repo.branch, output, api);
+    const at = new Date();
+    if (username === user) showCheckView(() => renderCheck(result, repo.owner, repo.branch, output, at));
   } finally {
     delete checkButton.dataset.busy;
-    checkButton.textContent = 'Check setup';
+    setCheckLabel('check.button');
     renderRepoLinks();
   }
 });
+
+// --- Language ---
+
+const LANG_KEY = 'better-github-profile:lang';
+const langRadios = document.querySelectorAll<HTMLInputElement>('input[name="lang"]');
+
+/** Puts the page's static text in `lang`. Text built in code follows from its next render. */
+function applyLang(lang: Lang): void {
+  setLang(lang);
+  document.documentElement.lang = lang;
+  for (const radio of langRadios) radio.checked = radio.value === lang;
+  translatePage();
+}
+
+for (const radio of langRadios) {
+  radio.addEventListener('change', () => {
+    const lang = toLang(radio.value) ?? 'en';
+    applyLang(lang);
+    try {
+      localStorage.setItem(LANG_KEY, lang);
+    } catch {
+      // Storage blocked: the switch holds until the page is left.
+    }
+    const search = withLang(location.search, lang);
+    if (search !== location.search) history.replaceState(history.state, '', `${location.pathname}${search}${location.hash}`);
+    // Only words change: the form, the lookup and the check keep their state.
+    renderCardChecks();
+    renderUserStatus();
+    renderRepoLinks();
+    checkView?.();
+  });
+}
+
+let storedLang: string | null = null;
+try {
+  storedLang = localStorage.getItem(LANG_KEY);
+} catch {
+  // Storage blocked: go by `?lang=` and the browser.
+}
+applyLang(detectLang({ search: location.search, stored: storedLang, browser: navigator.language }));
 
 // The starting username: `?user=` (a shared link, or the end of sign-in), else the saved one.
 const landing = readLanding(location.search);
@@ -632,7 +692,7 @@ if (cleanSearch !== location.search) {
   // Read once: a reload, or a later edit of the box, isn't overridden by a stale URL.
   history.replaceState(history.state, '', `${location.pathname}${cleanSearch}${location.hash}`);
 }
-if (landing.auth !== null) authNotice = AUTH_NOTICES[landing.auth];
+if (landing.auth !== null) authNotice = landing.auth;
 
 let startUsername = landing.user ?? '';
 if (landing.user === null) {
@@ -645,7 +705,6 @@ if (landing.user === null) {
 // Even an invalid `?user=` goes in the box: the status line says what is wrong with it.
 usernameInput.value = startUsername;
 
-el('#token-help').textContent = TOKEN_HELP;
 el('#workflow-path').textContent = WORKFLOW_PATH;
 // Saved like a typed name, so the next visit starts from it too.
 setUsername(startUsername);

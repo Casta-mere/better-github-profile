@@ -22,10 +22,10 @@ function text(control: string, value: string | boolean): string {
   return value;
 }
 
-/** `'a, ,b'` → `['a', 'b']`. */
+/** `'a, ,b'` → `['a', 'b']`. A full-width comma (`，`, what a Chinese input method types) counts too. */
 function splitList(value: string): string[] {
   return value
-    .split(',')
+    .split(/[,，]/)
     .map((x) => x.trim())
     .filter((x) => x.length > 0);
 }
