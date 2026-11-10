@@ -198,16 +198,49 @@
               <div class="box-header">
                 <h2><span class="num">2</span><span>Add the workflow</span></h2>
                 <div class="box-actions">
-                  <a id="workflow-new" class="btn btn-primary" data-repo-link="workflowNew" target="_blank" rel="noopener">
+                  <a
+                    id="workflow-new"
+                    class="btn btn-primary"
+                    data-repo-link="workflowNew"
+                    data-workflow-show="checking missing trouble"
+                    target="_blank"
+                    rel="noopener"
+                  >
                     Add workflow to <span data-repo-name>your profile repository</span>
                   </a>
+                  <a
+                    id="workflow-edit"
+                    class="btn btn-primary"
+                    data-repo-link="workflowEdit"
+                    data-workflow-show="different"
+                    target="_blank"
+                    rel="noopener"
+                    hidden
+                    >Update workflow</a
+                  >
                   <button type="button" class="btn" data-copy-from="workflow" aria-label="Copy the workflow">Copy</button>
                 </div>
               </div>
               <div class="step-body">
-                <p>
+                <p class="note" data-workflow-show="checking" hidden>
+                  Checking whether <span data-repo-name>your profile repository</span> already has the workflow&hellip;
+                </p>
+                <p data-workflow-show="missing trouble">
                   The button opens GitHub&rsquo;s new-file page with the workflow filled in: click
                   <strong>Commit changes</strong>. Or save it yourself as <code id="workflow-path"></code>.
+                </p>
+                <p data-workflow-show="different" hidden>
+                  <span data-repo-name>Your profile repository</span> already has a different workflow. GitHub can&rsquo;t
+                  fill in an edit: copy the new workflow (<strong>Copy</strong>), open <strong>Update workflow</strong>,
+                  select all in the editor, paste, then <strong>Commit changes</strong>.
+                </p>
+                <p data-workflow-show="same" class="workflow-same" data-tone="ok" hidden>
+                  <span>&check; Your workflow is already up to date.</span>
+                  <a class="quiet-link" data-repo-link="workflowEdit" target="_blank" rel="noopener">View it</a>
+                </p>
+                <p id="workflow-trouble" class="note" data-workflow-show="trouble" hidden></p>
+                <p class="note" data-workflow-show="same different" hidden>
+                  Cards from a previous theme stay in <code>cards/</code>; delete them if you like.
                 </p>
               </div>
               <pre><code id="workflow"></code></pre>
@@ -253,6 +286,9 @@
                   Once the check says the cards are ready, so the images exist:
                   <a data-repo-link="readmeEdit" target="_blank" rel="noopener">Edit <code>README.md</code></a>, paste
                   the markup and commit. GitHub can&rsquo;t fill in an edit, so copy the markup first.
+                </p>
+                <p class="note" data-workflow-show="different" hidden>
+                  Changing the theme or cards also changes the file names: replace the README markup too.
                 </p>
               </div>
               <pre><code id="readme"></code></pre>

@@ -26,6 +26,7 @@ import {
 import { readLanding, signInUrl, withoutLanding, type AuthOutcome } from './landing';
 import sample from './sample-snapshot.json';
 import { applyControl } from './state';
+import { fetchWorkflowFile, workflowToRead, workflowView, type WorkflowFile } from './workflow-state';
 
 if (!validateSnapshot(sample)) throw new Error('site/sample-snapshot.json is not a valid snapshot');
 const snapshot: Snapshot = sample;
@@ -283,6 +284,7 @@ function renderRepoLinks(): void {
   // The check looks the repository up itself (and says when it is missing): any valid name will do.
   checkButton.disabled = !valid || checkButton.dataset.busy === 'true';
   checkButton.title = valid ? '' : NO_USER_HINT;
+  renderWorkflowState();
 }
 
 function renderUserStatus(): void {
@@ -347,6 +349,8 @@ function fetchLookup(user: string): Promise<RepoLookup> {
     pending = lookupProfileRepo(user, api)
       .then((result) => {
         if (result.kind === 'found' || result.kind === 'missing') lookups.set(key, result);
+        // Even for a name no longer in the box: when it comes back, its workflow is known or being read.
+        if (result.kind === 'found') void loadWorkflowFile(result.owner);
         return result;
       })
       .finally(() => inFlight.delete(key));
@@ -371,6 +375,7 @@ async function lookUp(): Promise<RepoLookup | null> {
   }
   if (username !== user) return null; // a late answer for a name no longer in the box
   lookup = result;
+  if (result.kind === 'found') void loadWorkflowFile(result.owner);
   renderUserStatus();
   renderRepoLinks();
   return result;
@@ -391,6 +396,7 @@ function setUsername(value: string): void {
   }
   clearCheck();
   lookup = (isGitHubUsername(username) && lookups.get(username.toLowerCase())) || null;
+  if (lookup?.kind === 'found') void loadWorkflowFile(lookup.owner);
   renderUserStatus();
   renderRepoLinks();
 }
@@ -418,6 +424,82 @@ el('#links-hint-link').addEventListener('click', (e) => {
 });
 
 el<HTMLAnchorElement>('#sign-in').href = signInUrl(location.href);
+
+// --- Step 2: a workflow that already exists ---
+
+/** The workflow file per lowercased owner. Troubles are kept to show, but read again on the next lookup. */
+const workflowFiles = new Map<string, WorkflowFile>();
+/** Reads in flight per lowercased owner, so a file is never asked for twice at once. */
+const workflowReads = new Map<string, Promise<void>>();
+
+/** Reads `<owner>/<owner>`'s workflow file unless it is cached (found or missing); `fresh` reads it anyway. */
+function loadWorkflowFile(owner: string, fresh = false): Promise<void> {
+  const key = owner.toLowerCase();
+  const cached = workflowFiles.get(key)?.kind;
+  if (!fresh && (cached === 'found' || cached === 'missing')) return Promise.resolve();
+  let pending = workflowReads.get(key);
+  if (pending === undefined) {
+    pending = fetchWorkflowFile(owner, api)
+      // Never expected (troubles come back as values), but `checking` must always end.
+      .catch((): WorkflowFile => ({ kind: 'network-error' }))
+      .then((file) => {
+        workflowFiles.set(key, file);
+        renderRepoLinks(); // turns Add back on after `checking`, then renders step 2
+      })
+      .finally(() => workflowReads.delete(key));
+    workflowReads.set(key, pending);
+  }
+  return pending;
+}
+
+/**
+ * The workflow file in the repository the links point at: the found repository's owner (null
+ * when none is found), what is known about its file (undefined: nothing yet), and whether a
+ * read of it is in flight.
+ */
+function workflowNow(): { owner: string | null; file: WorkflowFile | undefined; reading: boolean } {
+  if (lookup === null || lookup === 'pending' || lookup.kind === 'missing') {
+    return { owner: null, file: undefined, reading: false };
+  }
+  // A failed repository lookup leaves the workflow unknown just the same.
+  if (lookup.kind !== 'found') return { owner: null, file: lookup, reading: false };
+  const key = lookup.owner.toLowerCase();
+  return { owner: lookup.owner, file: workflowFiles.get(key), reading: workflowReads.has(key) };
+}
+
+/**
+ * Step 2 (and step 4's note) for the workflow file, as `workflowView` decides: for a found
+ * repository Add stays off until its read settles, however the lookup arrived (typed, cached,
+ * late). Starts that read if none is running, so `checking` always ends. Runs after
+ * renderRepoLinks has set the links. Compares the cached file with the current YAML, so a
+ * config change asks GitHub nothing.
+ */
+function renderWorkflowState(): void {
+  const { owner, file, reading } = workflowNow();
+  const toRead = workflowToRead({ owner, file, reading });
+  if (toRead !== null) void loadWorkflowFile(toRead);
+  const target = repoTarget();
+  const view = workflowView({ file, hasTarget: target !== null, yaml: workflowYaml(setup) });
+  if (view === 'checking') {
+    // Add would hit GitHub's "already exists" if the file is there: wait for the answer.
+    const add = el<HTMLAnchorElement>('#workflow-new');
+    add.removeAttribute('href');
+    add.setAttribute('aria-disabled', 'true');
+    add.title = 'Checking whether the workflow already exists';
+  }
+  if (view === 'trouble' && target !== null && file !== undefined && file.kind !== 'found' && file.kind !== 'missing') {
+    // Add stays the button; Update is offered here, so the header keeps two buttons on a phone.
+    el('#workflow-trouble').replaceChildren(
+      `Couldn’t check whether the workflow already exists: ${troubleText(file)} If it does, `,
+      link(profileRepoLinks(target.owner, target.branch).workflowEdit, 'update it'),
+      ' instead (copy, select all in the editor, paste, commit). ',
+      retryButton('Look again'),
+    );
+  }
+  for (const node of document.querySelectorAll<HTMLElement>('[data-workflow-show]')) {
+    node.hidden = !(node.dataset.workflowShow ?? '').split(' ').includes(view);
+  }
+}
 
 // --- Step 3: check setup ---
 
@@ -533,6 +615,7 @@ checkButton.addEventListener('click', async () => {
       showCheck(repo.kind === 'rate-limited' ? 'warn' : 'err', [[troubleText(repo)]]);
       return;
     }
+    void loadWorkflowFile(repo.owner, true);
     const result = await checkSetup(repo.owner, repo.branch, outputDirOf(setup), api);
     if (username === user) renderCheck(result, repo.owner, repo.branch);
   } finally {
