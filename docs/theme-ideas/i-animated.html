@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Theme idea I: Animated</title>
+<style>
+  body{margin:0;padding:24px;font:14px/1.5 -apple-system,"Segoe UI",Helvetica,Arial,sans-serif;background:#f6f8fa;color:#1f2328}
+  header{max-width:880px;margin:0 auto 18px}
+  header h1{font-size:20px;margin:0 0 6px}
+  header p{margin:4px 0;color:#59636e}
+  header code{font-size:12.5px}
+  .pair{display:grid;grid-template-columns:1fr;border-radius:10px;overflow:hidden;border:1px solid #8884;width:max-content;max-width:100%;margin:0 auto}
+  .pair.side{grid-template-columns:1fr 1fr}
+  .stage{padding:22px;display:flex;gap:14px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+  .stage.light{background:#ffffff;--fg:#1f2328;--mut:#59636e;--bd:#d1d9e0;--card:#ffffff;--acc:#0969da;--trk:#eff2f5;--g1:#9be9a8;--g2:#40c463;--g3:#30a14e;--g4:#216e39;--gold:#bf8700;--glass:rgba(255,255,255,.55);--blob1:#a5c8ff;--blob2:#ffc9e0;--blob3:#c8f5d8}
+  .stage.dark{background:#0d1117;--fg:#e6edf3;--mut:#9198a1;--bd:#3d444d;--card:#0d1117;--acc:#4493f8;--trk:#21262d;--g1:#0e4429;--g2:#006d32;--g3:#26a641;--g4:#39d353;--gold:#e3b341;--glass:rgba(22,27,34,.55);--blob1:#1f4fa8;--blob2:#7a2858;--blob3:#1d6b45}
+  .tag{font:600 11px system-ui;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);width:100%;margin:-8px 0 2px}
+  .sans{font-family:-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;color:var(--fg)}
+  .mono{font-family:ui-monospace,"SF Mono",Menlo,monospace;color:var(--fg)}
+  .i{width:820px;border:1px solid var(--bd);border-radius:6px;padding:16px 20px;box-sizing:border-box;display:grid;grid-template-columns:1.2fr 1fr;gap:24px}
+  .i .typed{font:13px/1.7 ui-monospace,Menlo,monospace;color:var(--fg);min-height:100px}
+  .i .typed .cur{display:inline-block;width:7px;height:14px;background:var(--acc);vertical-align:-2px;animation:blink 1s steps(1) infinite}
+  @keyframes blink{50%{opacity:0}}
+  .i .cnt{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .i .cnt b{display:block;font-size:26px;font-variant-numeric:tabular-nums}.i .cnt span{font-size:11px;color:var(--mut)}
+  .i .bars{display:flex;align-items:flex-end;gap:2px;height:40px;margin-top:10px;grid-column:span 2}
+  .i .bars i{flex:1;background:var(--g3);opacity:.6;border-radius:1px;transform-origin:bottom;animation:grow .9s cubic-bezier(.2,.8,.2,1) both}
+  @keyframes grow{from{transform:scaleY(0)}}
+  .i .replay{font-size:11px;color:var(--acc);cursor:pointer;margin-top:6px;display:inline-block}
+</style>
+</head>
+<body>
+<header>
+  <h1>I · Animated</h1>
+  <p>A line types itself out, the numbers appear, and the weekly bars grow in. Plays once per page view: a calm design that moves.</p>
+  <p><b>Data it needs:</b> the current snapshot is enough. The animation must be CSS or SMIL inside the SVG, with no script: GitHub shows the card as an image, which never runs scripts.</p>
+  <p>An HTML mockup of the idea, not a theme: a theme draws the same design as an SVG string (see <code>CONTRIBUTING.md</code>, "Add a theme"). The numbers come from the public test fixture, <code>test/fixtures/snapshot-casta-mere.json</code>. The typing and counting use script here only to preview the idea. In SVG, use CSS keyframes or SMIL (counting digits up has no CSS equivalent: fade or slide the numbers in instead), end on the full, readable card, and honor <code>prefers-reduced-motion</code>.</p>
+</header>
+<div class="pair"><div class="stage light"></div><div class="stage dark"></div></div>
+<script>
+// From the public test fixture, test/fixtures/snapshot-casta-mere.json: calendar.weeks
+// (oldest to newest), and the top languages as topLanguages() returns them.
+const weeks=[1,18,8,4,1,4,0,0,1,2,10,2,4,28,12,12,3,13,13,11,14,3,20,22,30,23,6,7,9,15,8,16,5,43,20,21,18,66,11,3,21,19,2,25,42,22,9,1,0,13,54,76,4];
+const langs=[["HTML","#e34c26",42.2],["Python","#3572A5",31.5],["TypeScript","#3178c6",13.2],["TeX","#3D6117",5.4],["Other","#8b949e",7.7]];
+const max=Math.max(...weeks);
+const card=`<div class="i sans">
+ <div><div class="typed mono"><span class="tw"></span><span class="cur"></span></div><span class="replay">↻ replay animation (mockup only)</span></div>
+ <div class="cnt"><div><b data-n="2383">0</b><span>contributions all-time</span></div><div><b data-n="795">0</b><span>this year</span></div><div><b data-n="59">0</b><span>repositories</span></div><div><b data-n="21">0</b><span>stars</span></div>
+  <div class="bars">${weeks.map((w,k)=>`<i style="height:${Math.max(4,w/max*100)}%;animation-delay:${k*18}ms"></i>`).join('')}</div></div>
+</div>`;
+document.querySelectorAll('.stage').forEach(s=>{s.innerHTML=`<div class="tag">${s.classList.contains('light')?'light':'dark'}</div>`+card});
+// Mockup only: a theme can't run script.
+function run(){
+ document.querySelectorAll('.i').forEach(c=>{
+  const tw=c.querySelector('.tw');const txt='$ whoami\nCastamere (@casta-mere), on GitHub since 2021.\nMostly HTML, Python and TypeScript.';let n=0;tw.textContent='';
+  const t=setInterval(()=>{tw.innerHTML=txt.slice(0,++n).replace(/\n/g,'<br>');if(n>=txt.length)clearInterval(t)},28);
+  c.querySelectorAll('[data-n]').forEach(b=>{const N=+b.dataset.n;const t0=performance.now();const f=now=>{const p=Math.min(1,(now-t0)/1200);b.textContent=Math.round(N*(1-Math.pow(1-p,3))).toLocaleString('en-US');if(p<1)requestAnimationFrame(f)};requestAnimationFrame(f)});
+  c.querySelectorAll('.bars i').forEach(i=>{i.style.animation='none';i.offsetHeight;i.style.animation=''});
+ });}
+document.querySelectorAll('.replay').forEach(r=>r.addEventListener('click',e=>{e.stopPropagation();run()}));
+run();
+</script>
+</body>
+</html>

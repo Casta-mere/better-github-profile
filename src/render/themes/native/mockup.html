@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>native theme: design mockup (option A)</title>
+<style>
+  body{margin:0;padding:24px;font:14px/1.5 -apple-system,"Segoe UI",Helvetica,Arial,sans-serif;background:#f6f8fa;color:#1f2328}
+  header{max-width:880px;margin:0 auto 18px}
+  header h1{font-size:20px;margin:0 0 6px}
+  header p{margin:4px 0;color:#59636e}
+  header code{font-size:12.5px}
+  .pair{display:grid;grid-template-columns:1fr;border-radius:10px;overflow:hidden;border:1px solid #8884;width:max-content;max-width:100%;margin:0 auto}
+  .pair.side{grid-template-columns:1fr 1fr}
+  .stage{padding:22px;display:flex;gap:14px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+  .stage.light{background:#ffffff;--fg:#1f2328;--mut:#59636e;--bd:#d1d9e0;--card:#ffffff;--acc:#0969da;--trk:#eff2f5;--g1:#9be9a8;--g2:#40c463;--g3:#30a14e;--g4:#216e39;--gold:#bf8700;--glass:rgba(255,255,255,.55);--blob1:#a5c8ff;--blob2:#ffc9e0;--blob3:#c8f5d8}
+  .stage.dark{background:#0d1117;--fg:#e6edf3;--mut:#9198a1;--bd:#3d444d;--card:#0d1117;--acc:#4493f8;--trk:#21262d;--g1:#0e4429;--g2:#006d32;--g3:#26a641;--g4:#39d353;--gold:#e3b341;--glass:rgba(22,27,34,.55);--blob1:#1f4fa8;--blob2:#7a2858;--blob3:#1d6b45}
+  .tag{font:600 11px system-ui;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);width:100%;margin:-8px 0 2px}
+  .sans{font-family:-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;color:var(--fg)}
+  .mono{font-family:ui-monospace,"SF Mono",Menlo,monospace;color:var(--fg)}
+  .a{font-family:-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;color:var(--fg);background:var(--card);border:1px solid var(--bd);border-radius:6px;padding:18px 20px;width:330px;box-sizing:border-box}
+  .a h4{margin:0 0 12px;font-size:15px;font-weight:600;color:var(--acc)}
+  .a .row{display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0;color:var(--mut)}
+  .a .row b{color:var(--fg);font-weight:600;font-variant-numeric:tabular-nums}
+  .a .spark{display:flex;align-items:flex-end;gap:1.5px;height:34px;margin:12px 0 4px}
+  .a .spark i{flex:1;background:var(--g3);opacity:.55;border-radius:1px;min-height:1px}
+  .a .cap{font-size:10.5px;color:var(--mut);display:flex;justify-content:space-between}
+  .a .bar{display:flex;height:8px;border-radius:4px;overflow:hidden;margin:4px 0 12px;gap:2px}
+  .a .bar i{opacity:.75}
+  .a .legend{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;font-size:12px}
+  .a .legend span::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--c);opacity:.8;margin-right:6px}
+  .a .legend em{font-style:normal;color:var(--mut);margin-left:4px}
+</style>
+</head>
+<body>
+<header>
+  <h1>A · Native, refined (built as <code>native</code>)</h1>
+  <p>Two cards that feel like part of GitHub: key numbers with a 52-week activity sparkline, and a clean language bar.</p>
+  <p><b>Data it needs:</b> the current snapshot.</p>
+  <p>The design the <code>native</code> theme was built from. The theme is the reference where they differ. The numbers come from the public test fixture, <code>test/fixtures/snapshot-casta-mere.json</code>.</p>
+</header>
+<div class="pair side"><div class="stage light"></div><div class="stage dark"></div></div>
+<script>
+// From the public test fixture, test/fixtures/snapshot-casta-mere.json: calendar.weeks
+// (oldest to newest), and the top languages as topLanguages() returns them.
+const weeks=[1,18,8,4,1,4,0,0,1,2,10,2,4,28,12,12,3,13,13,11,14,3,20,22,30,23,6,7,9,15,8,16,5,43,20,21,18,66,11,3,21,19,2,25,42,22,9,1,0,13,54,76,4];
+const langs=[["HTML","#e34c26",42.2],["Python","#3572A5",31.5],["TypeScript","#3178c6",13.2],["TeX","#3D6117",5.4],["Shell","#89e051",1.9],["Other","#8b949e",5.8]];
+const max=Math.max(...weeks);
+const spark=()=>weeks.map(w=>`<i style="height:${Math.max(3,w/max*100)}%"></i>`).join('');
+const bar=()=>langs.map(l=>`<i style="width:${l[2]}%;background:${l[1]}"></i>`).join('');
+const card=`
+ <div class="a">
+  <h4>Castamere's GitHub Statistics</h4>
+  <div class="row">★ Stars<b>21</b></div>
+  <div class="row">⑂ Forks<b>5</b></div>
+  <div class="row">⊕ All-time contributions<b>2,383</b></div>
+  <div class="row">◷ Contributions this year<b>795</b></div>
+  <div class="row">▣ Repositories<b>59</b></div>
+  <div class="spark">${spark()}</div>
+  <div class="cap"><span>Nov 2025</span><span>last 52 weeks</span><span>now</span></div>
+ </div>
+ <div class="a">
+  <h4 style="color:var(--fg)">Languages</h4>
+  <div class="bar">${bar()}</div>
+  <div class="legend">${langs.map(l=>`<span style="--c:${l[1]}">${l[0]}<em>${l[2]}%</em></span>`).join('')}</div>
+ </div>`;
+document.querySelectorAll('.stage').forEach(s=>{s.innerHTML=`<div class="tag">${s.classList.contains('light')?'light':'dark'}</div>`+card});
+</script>
+</body>
+</html>

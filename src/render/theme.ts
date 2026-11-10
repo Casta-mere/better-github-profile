@@ -1,4 +1,4 @@
-import type { Mode, Snapshot, ThemeName } from '../snapshot/types';
+import type { Mode, Snapshot } from '../snapshot/types';
 
 export interface RenderOptions {
   mode: Mode;
@@ -6,9 +6,16 @@ export interface RenderOptions {
   staleAsOf?: string;
 }
 
-export interface Theme {
-  name: ThemeName;
+/**
+ * A theme: a name and the cards it can draw. `Name` is the theme's literal name, so the
+ * registry (`themes/index.ts`) can derive `ThemeName` from its keys and check that each
+ * key is its theme's own name.
+ */
+export interface Theme<Name extends string = string> {
+  name: Name;
+  /** Card names, in display order: the default `cards` input and the selector order. */
   cards: string[];
+  /** One standalone SVG, as a string. Throws on a card that is not in `cards`. */
   render(card: string, s: Snapshot, o: RenderOptions): string;
 }
 
@@ -19,8 +26,8 @@ export function unknownCard(theme: Pick<Theme, 'name' | 'cards'>, card: string):
 }
 
 /** A theme whose cards, in display order, are the keys of `renderers`. */
-export function defineTheme(name: ThemeName, renderers: Record<string, CardRenderer>): Theme {
-  const theme: Theme = {
+export function defineTheme<Name extends string>(name: Name, renderers: Record<string, CardRenderer>): Theme<Name> {
+  const theme: Theme<Name> = {
     name,
     cards: Object.keys(renderers),
     render(card, s, o) {

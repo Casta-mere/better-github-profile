@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Theme idea H: RPG character sheet</title>
+<style>
+  body{margin:0;padding:24px;font:14px/1.5 -apple-system,"Segoe UI",Helvetica,Arial,sans-serif;background:#f6f8fa;color:#1f2328}
+  header{max-width:880px;margin:0 auto 18px}
+  header h1{font-size:20px;margin:0 0 6px}
+  header p{margin:4px 0;color:#59636e}
+  header code{font-size:12.5px}
+  .pair{display:grid;grid-template-columns:1fr;border-radius:10px;overflow:hidden;border:1px solid #8884;width:max-content;max-width:100%;margin:0 auto}
+  .pair.side{grid-template-columns:1fr 1fr}
+  .stage{padding:22px;display:flex;gap:14px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+  .stage.light{background:#ffffff;--fg:#1f2328;--mut:#59636e;--bd:#d1d9e0;--card:#ffffff;--acc:#0969da;--trk:#eff2f5;--g1:#9be9a8;--g2:#40c463;--g3:#30a14e;--g4:#216e39;--gold:#bf8700;--glass:rgba(255,255,255,.55);--blob1:#a5c8ff;--blob2:#ffc9e0;--blob3:#c8f5d8}
+  .stage.dark{background:#0d1117;--fg:#e6edf3;--mut:#9198a1;--bd:#3d444d;--card:#0d1117;--acc:#4493f8;--trk:#21262d;--g1:#0e4429;--g2:#006d32;--g3:#26a641;--g4:#39d353;--gold:#e3b341;--glass:rgba(22,27,34,.55);--blob1:#1f4fa8;--blob2:#7a2858;--blob3:#1d6b45}
+  .tag{font:600 11px system-ui;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);width:100%;margin:-8px 0 2px}
+  .sans{font-family:-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;color:var(--fg)}
+  .mono{font-family:ui-monospace,"SF Mono",Menlo,monospace;color:var(--fg)}
+  .h{width:820px;border:2px solid var(--fg);border-radius:4px;padding:14px 18px;box-sizing:border-box;display:grid;grid-template-columns:150px 1fr 1fr;gap:20px;font:12px/1.5 ui-monospace,Menlo,monospace;color:var(--fg);image-rendering:pixelated}
+  .h .av{border:2px solid var(--fg);height:120px;display:grid;place-items:center;font-size:44px;background:color-mix(in srgb,var(--acc) 8%,transparent)}
+  .h .nm{font-weight:700;font-size:14px;margin-top:6px}.h .cl{color:var(--mut);font-size:11px}
+  .h .lv{display:flex;justify-content:space-between;font-weight:700}
+  .h .xp{height:10px;border:2px solid var(--fg);margin:4px 0 2px;position:relative}.h .xp i{position:absolute;inset:0;width:62%;background:var(--gold);opacity:.7}
+  .h .stat{display:flex;justify-content:space-between;border-bottom:1px dotted var(--bd);padding:2px 0}
+  .h .sk{display:grid;grid-template-columns:86px 1fr 34px;gap:8px;align-items:center;padding:2px 0}
+  .h .pips{display:flex;gap:2px}.h .pips i{width:9px;height:9px;border:1px solid var(--fg);opacity:.25}.h .pips i.on{opacity:.8;background:var(--c);border-color:var(--c)}
+  .h .ach{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}.h .ach span{border:1px solid var(--bd);padding:1px 6px;font-size:10.5px;border-radius:2px}
+</style>
+</head>
+<body>
+<header>
+  <h1>H · RPG character sheet</h1>
+  <p>You as a game character: a level from all-time contributions, an XP bar to the next level, a class from the language mix, languages as skill pips, and achievement badges.</p>
+  <p><b>Data it needs:</b> the current snapshot is enough.</p>
+  <p>An HTML mockup of the idea, not a theme: a theme draws the same design as an SVG string (see <code>CONTRIBUTING.md</code>, "Add a theme"). The numbers come from the public test fixture, <code>test/fixtures/snapshot-casta-mere.json</code>. The level, class and achievements are invented framing: a theme would define their rules from snapshot fields. Emoji depend on the viewer&#39;s fonts.</p>
+</header>
+<div class="pair"><div class="stage light"></div><div class="stage dark"></div></div>
+<script>
+// From the public test fixture, test/fixtures/snapshot-casta-mere.json: calendar.weeks
+// (oldest to newest), and the top languages as topLanguages() returns them.
+const weeks=[1,18,8,4,1,4,0,0,1,2,10,2,4,28,12,12,3,13,13,11,14,3,20,22,30,23,6,7,9,15,8,16,5,43,20,21,18,66,11,3,21,19,2,25,42,22,9,1,0,13,54,76,4];
+const langs=[["HTML","#e34c26",42.2],["Python","#3572A5",31.5],["TypeScript","#3178c6",13.2],["TeX","#3D6117",5.4],["Other","#8b949e",7.7]];
+const max=Math.max(...weeks);
+const pips=(p,c)=>`<span class="pips">${Array.from({length:10},(_,k)=>`<i class="${k<Math.round(p/10)?'on':''}" style="--c:${c}"></i>`).join('')}</span>`;
+const card=`<div class="h">
+ <div><div class="av">🐉</div><div class="nm">Castamere</div><div class="cl">Full-stack Scribe</div></div>
+ <div><div class="lv"><span>LV 23</span><span style="color:var(--mut);font-weight:400">2,383 XP</span></div>
+  <div class="xp"><i></i></div><div style="font-size:10.5px;color:var(--mut)">117 XP to LV 24</div>
+  <div style="margin-top:8px"><div class="stat"><span>STR · commits</span><b>419</b></div><div class="stat"><span>CHA · stars</span><b>21</b></div><div class="stat"><span>INT · repos</span><b>59</b></div><div class="stat"><span>STEALTH · private</span><b>362</b></div></div></div>
+ <div><div style="font-weight:700;margin-bottom:4px">SKILLS</div>
+  ${langs.slice(0,4).map(l=>`<div class="sk"><span>${l[0]}</span>${pips(l[2]*2,l[1])}<span style="color:var(--mut)">${Math.round(l[2])}%</span></div>`).join('')}
+  <div class="ach"><span>🏆 ${max} in a week</span><span>📜 LaTeX Master</span><span>🌙 Night Owl</span></div></div>
+</div>`;
+document.querySelectorAll('.stage').forEach(s=>{s.innerHTML=`<div class="tag">${s.classList.contains('light')?'light':'dark'}</div>`+card});
+</script>
+</body>
+</html>

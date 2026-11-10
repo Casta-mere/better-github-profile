@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { THEMES } from '../src/render/index';
 
 // src/render and src/snippets also run in the browser selector, so they must stay free of
 // Node built-ins, @actions/* and the DOM. ESLint enforces the imports; this pins all four.
@@ -16,6 +17,10 @@ const sources = ROOTS.filter((r) => existsSync(r)).flatMap((root) =>
 describe('renderer purity', () => {
   it('finds the renderer sources', () => {
     expect(sources.some((f) => f.startsWith('src/render/'))).toBe(true);
+  });
+
+  it('covers every registered theme folder', () => {
+    for (const name of Object.keys(THEMES)) expect(sources).toContain(join('src/render/themes', name, 'index.ts'));
   });
 
   it.each(sources)('%s uses no Node, @actions or DOM API', (file) => {

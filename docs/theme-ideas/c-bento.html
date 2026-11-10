@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Theme idea C: Bento dashboard</title>
+<style>
+  body{margin:0;padding:24px;font:14px/1.5 -apple-system,"Segoe UI",Helvetica,Arial,sans-serif;background:#f6f8fa;color:#1f2328}
+  header{max-width:880px;margin:0 auto 18px}
+  header h1{font-size:20px;margin:0 0 6px}
+  header p{margin:4px 0;color:#59636e}
+  header code{font-size:12.5px}
+  .pair{display:grid;grid-template-columns:1fr;border-radius:10px;overflow:hidden;border:1px solid #8884;width:max-content;max-width:100%;margin:0 auto}
+  .pair.side{grid-template-columns:1fr 1fr}
+  .stage{padding:22px;display:flex;gap:14px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+  .stage.light{background:#ffffff;--fg:#1f2328;--mut:#59636e;--bd:#d1d9e0;--card:#ffffff;--acc:#0969da;--trk:#eff2f5;--g1:#9be9a8;--g2:#40c463;--g3:#30a14e;--g4:#216e39;--gold:#bf8700;--glass:rgba(255,255,255,.55);--blob1:#a5c8ff;--blob2:#ffc9e0;--blob3:#c8f5d8}
+  .stage.dark{background:#0d1117;--fg:#e6edf3;--mut:#9198a1;--bd:#3d444d;--card:#0d1117;--acc:#4493f8;--trk:#21262d;--g1:#0e4429;--g2:#006d32;--g3:#26a641;--g4:#39d353;--gold:#e3b341;--glass:rgba(22,27,34,.55);--blob1:#1f4fa8;--blob2:#7a2858;--blob3:#1d6b45}
+  .tag{font:600 11px system-ui;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);width:100%;margin:-8px 0 2px}
+  .sans{font-family:-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;color:var(--fg)}
+  .mono{font-family:ui-monospace,"SF Mono",Menlo,monospace;color:var(--fg)}
+  .c{font-family:-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;color:var(--fg);width:840px;display:grid;grid-template-columns:1.1fr 1fr 1fr;grid-template-rows:auto auto;gap:10px}
+  .c .t{background:var(--card);border:1.5px solid var(--fg);border-radius:10px;padding:14px 16px;box-shadow:3px 3px 0 color-mix(in srgb,var(--fg) 22%,transparent)}
+  .c .lab{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--mut);margin-bottom:6px}
+  .c .big{font-size:30px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+  .c .sub{font-size:11.5px;color:var(--mut)}
+  .c .id{grid-row:span 2;display:flex;flex-direction:column;gap:10px}
+  .c .id .who{font-size:18px;font-weight:700}
+  .c .id .mini{display:grid;grid-template-columns:1fr 1fr;gap:8px 10px;margin-top:auto}
+  .c .id .mini div{font-size:11px;color:var(--mut)} .c .id .mini b{display:block;font-size:17px;color:var(--fg)}
+  .c .wk{grid-column:span 2}
+  .c .wk .spark{display:flex;align-items:flex-end;gap:2px;height:52px;margin-top:6px}
+  .c .wk .spark i{flex:1;border-radius:2px 2px 0 0;background:var(--acc);opacity:.45}
+  .c .wk .spark i.hi{opacity:.85}
+  .c .bar{display:flex;height:10px;border-radius:3px;overflow:hidden;margin:8px 0 10px;border:1px solid var(--bd)}
+  .c .bar i{opacity:.7}
+  .c .langs{font-size:11.5px;display:grid;gap:3px}
+  .c .langs span{display:flex;justify-content:space-between}.c .langs em{font-style:normal;color:var(--mut)}
+  .c .repo{font-size:12px;display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px dashed var(--bd)}
+  .c .repo:last-child{border:0}.c .repo em{font-style:normal;color:var(--mut)}
+</style>
+</head>
+<body>
+<header>
+  <h1>C · Bento dashboard</h1>
+  <p>One wide card of tiles with bold borders and an offset shadow: a big headline number, weekly bars, languages and top repositories.</p>
+  <p><b>Data it needs:</b> the current snapshot is enough (<code>repos.top</code> has the top public repositories).</p>
+  <p>An HTML mockup of the idea, not a theme: a theme draws the same design as an SVG string (see <code>CONTRIBUTING.md</code>, "Add a theme"). The numbers come from the public test fixture, <code>test/fixtures/snapshot-casta-mere.json</code>.</p>
+</header>
+<div class="pair"><div class="stage light"></div><div class="stage dark"></div></div>
+<script>
+// From the public test fixture, test/fixtures/snapshot-casta-mere.json: calendar.weeks
+// (oldest to newest), and the top languages as topLanguages() returns them.
+const weeks=[1,18,8,4,1,4,0,0,1,2,10,2,4,28,12,12,3,13,13,11,14,3,20,22,30,23,6,7,9,15,8,16,5,43,20,21,18,66,11,3,21,19,2,25,42,22,9,1,0,13,54,76,4];
+const langs=[["HTML","#e34c26",42.2],["Python","#3572A5",31.5],["TypeScript","#3178c6",13.2],["TeX","#3D6117",5.4],["Shell","#89e051",1.9],["Other","#8b949e",5.8]];
+const max=Math.max(...weeks);
+const spark=()=>weeks.map(w=>`<i class="${w>=40?'hi':''}" style="height:${Math.max(3,w/max*100)}%"></i>`).join('');
+const bar=()=>langs.map(l=>`<i style="width:${l[2]}%;background:${l[1]}"></i>`).join('');
+const card=`
+ <div class="c">
+  <div class="t id">
+   <div class="lab">github / casta-mere</div>
+   <div class="who">Castamere</div>
+   <div><div class="big">2,383</div><div class="sub">contributions all-time</div></div>
+   <div class="mini"><div><b>795</b>this year</div><div><b>59</b>repos</div><div><b>21</b>stars</div><div><b>22</b>followers</div></div>
+  </div>
+  <div class="t wk"><div class="lab">Weekly activity · last 52 weeks</div><div class="spark">${spark()}</div></div>
+  <div class="t"><div class="lab">Languages</div><div class="bar">${bar()}</div>
+   <div class="langs">${langs.slice(0,4).map(l=>`<span><span><span style="color:${l[1]}">●</span> ${l[0]}</span><em>${l[2]}%</em></span>`).join('')}</div></div>
+  <div class="t"><div class="lab">Top repos</div>
+   <div class="repo">LaTeX-GraduationTemplate<em>★ 5</em></div>
+   <div class="repo">Read-Book<em>★ 4</em></div>
+   <div class="repo">My-Website<em>★ 3</em></div>
+   <div class="repo">Dash-Board<em>★ 2</em></div></div>
+ </div>`;
+document.querySelectorAll('.stage').forEach(s=>{s.innerHTML=`<div class="tag">${s.classList.contains('light')?'light':'dark'}</div>`+card});
+</script>
+</body>
+</html>
