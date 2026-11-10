@@ -52,8 +52,6 @@ export type WorkflowView = 'checking' | 'missing' | 'same' | 'different' | 'trou
 export interface WorkflowViewInput {
   /** The last read of the file (kept while a new one runs), a failed repository lookup, or undefined when nothing is known. */
   file: WorkflowFile | undefined;
-  /** A read of the file is in flight. */
-  reading: boolean;
   /** The repository links point somewhere: the repository was found, or GitHub couldn't be asked. */
   hasTarget: boolean;
   /** The workflow the page generates now. */
@@ -62,13 +60,31 @@ export interface WorkflowViewInput {
 
 /**
  * Step 2's view. A known answer wins, even while a new read runs, so a refresh never flickers.
- * With none yet, a read in flight is `checking`: Add is never offered before the file is known
- * not to exist, or GitHub would refuse it ("a file with the same name already exists"). Without
- * a target the links are off anyway, so the step reads as before: `missing`.
+ * With a target but no answer yet it is `checking`, whether or not a read is in flight: Add is
+ * never offered before the file is known not to exist, or GitHub would refuse it ("a file with
+ * the same name already exists"). Without a target the links are off anyway, so the step reads
+ * as before: `missing`.
  */
-export function workflowView({ file, reading, hasTarget, yaml }: WorkflowViewInput): WorkflowView {
+export function workflowView({ file, hasTarget, yaml }: WorkflowViewInput): WorkflowView {
   if (!hasTarget) return 'missing';
-  if (file === undefined) return reading ? 'checking' : 'missing';
+  if (file === undefined) return 'checking';
   if (file.kind === 'found') return compareWorkflow(file.content, yaml);
   return file.kind === 'missing' ? 'missing' : 'trouble';
+}
+
+export interface WorkflowReadInput {
+  /** The found repository's owner; null when no repository is found (yet). */
+  owner: string | null;
+  /** What is known about its workflow file; undefined when nothing is. */
+  file: WorkflowFile | undefined;
+  /** A read of the file is in flight. */
+  reading: boolean;
+}
+
+/**
+ * Whose workflow file to start reading now, or null: a found repository whose file is unknown
+ * and not being read. Asked on every render of step 2, so `checking` always has a read that ends it.
+ */
+export function workflowToRead({ owner, file, reading }: WorkflowReadInput): string | null {
+  return owner !== null && file === undefined && !reading ? owner : null;
 }

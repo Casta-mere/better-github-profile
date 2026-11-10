@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Fetch } from '../site/check';
-import { compareWorkflow, fetchWorkflowFile, workflowView, type WorkflowFile } from '../site/workflow-state';
+import { compareWorkflow, fetchWorkflowFile, workflowToRead, workflowView, type WorkflowFile } from '../site/workflow-state';
 import { DEFAULT_SETUP, workflowYaml } from '../src/snippets/index';
 
 /** A canned GitHub API answer, or a fetch that throws like a browser does when offline. */
@@ -118,46 +118,59 @@ describe('compareWorkflow', () => {
   });
 });
 
-describe('workflowView', () => {
-  const found = (content: string): WorkflowFile => ({ kind: 'found', content });
-  const view = (file: WorkflowFile | undefined, reading: boolean, yaml = native, hasTarget = true) =>
-    workflowView({ file, reading, hasTarget, yaml });
+const found = (content: string): WorkflowFile => ({ kind: 'found', content });
 
-  it('is checking while the first read is in flight, so Add is not offered yet', () => {
-    expect(view(undefined, true)).toBe('checking');
+describe('workflowView', () => {
+  const view = (file: WorkflowFile | undefined, yaml = native, hasTarget = true) => workflowView({ file, hasTarget, yaml });
+
+  it('is checking for a found repository whose file is not known yet, so Add is not offered', () => {
+    expect(view(undefined)).toBe('checking');
   });
 
-  it('keeps the cached answer while a new read runs: no flicker back to checking', () => {
-    expect(view(found(native), true)).toBe('same');
-    expect(view(found(strip), true)).toBe('different');
-    expect(view({ kind: 'missing' }, true)).toBe('missing');
-    expect(view({ kind: 'rate-limited' }, true)).toBe('trouble');
+  it('keeps showing a known answer, also while a new read runs: no flicker back to checking', () => {
+    expect(view(found(native))).toBe('same');
+    expect(view(found(strip))).toBe('different');
+    expect(view({ kind: 'missing' })).toBe('missing');
+    expect(view({ kind: 'rate-limited' })).toBe('trouble');
   });
 
   it('is missing once the read settles on a 404', () => {
-    expect(view({ kind: 'missing' }, false)).toBe('missing');
+    expect(view({ kind: 'missing' })).toBe('missing');
   });
 
   it('compares a found file with the YAML the page generates now', () => {
-    expect(view(found(native), false)).toBe('same');
-    expect(view(found(native.replace(/\n/g, '\r\n')), false)).toBe('same');
-    expect(view(found(native), false, strip)).toBe('different');
-    expect(view(found(strip), false, strip)).toBe('same');
+    expect(view(found(native.replace(/\n/g, '\r\n')))).toBe('same');
+    expect(view(found(native), strip)).toBe('different');
+    expect(view(found(strip), strip)).toBe('same');
   });
 
   it('is trouble when GitHub gave no answer, for the file or for the repository', () => {
-    expect(view({ kind: 'rate-limited' }, false)).toBe('trouble');
-    expect(view({ kind: 'network-error' }, false)).toBe('trouble');
-    expect(view({ kind: 'http-error', status: 500 }, false)).toBe('trouble');
-  });
-
-  it('is missing with a target but nothing known and nothing in flight', () => {
-    expect(view(undefined, false)).toBe('missing');
+    expect(view({ kind: 'network-error' })).toBe('trouble');
+    expect(view({ kind: 'http-error', status: 500 })).toBe('trouble');
   });
 
   it('is missing without a target: the links are off, and the step reads as before', () => {
-    expect(view(undefined, false, native, false)).toBe('missing');
-    expect(view(undefined, true, native, false)).toBe('missing');
-    expect(view({ kind: 'rate-limited' }, false, native, false)).toBe('missing');
+    expect(view(undefined, native, false)).toBe('missing');
+    expect(view({ kind: 'rate-limited' }, native, false)).toBe('missing');
+  });
+});
+
+describe('workflowToRead', () => {
+  it('reads a found repository whose file is unknown and not being read', () => {
+    expect(workflowToRead({ owner: 'octo', file: undefined, reading: false })).toBe('octo');
+  });
+
+  it('does not ask twice while a read is in flight', () => {
+    expect(workflowToRead({ owner: 'octo', file: undefined, reading: true })).toBeNull();
+  });
+
+  it('does not read again once something is known (a refresh is asked for explicitly)', () => {
+    expect(workflowToRead({ owner: 'octo', file: found(native), reading: false })).toBeNull();
+    expect(workflowToRead({ owner: 'octo', file: { kind: 'missing' }, reading: false })).toBeNull();
+    expect(workflowToRead({ owner: 'octo', file: { kind: 'rate-limited' }, reading: false })).toBeNull();
+  });
+
+  it('reads nothing without a found repository', () => {
+    expect(workflowToRead({ owner: null, file: undefined, reading: false })).toBeNull();
   });
 });
