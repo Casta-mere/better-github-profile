@@ -23,6 +23,7 @@ import {
   type RepoLookup,
   type Trouble,
 } from './check';
+import { readLanding, signInUrl, withoutLanding, type AuthOutcome } from './landing';
 import sample from './sample-snapshot.json';
 import { applyControl } from './state';
 
@@ -177,9 +178,21 @@ document.addEventListener('click', async (e) => {
 
 const USERNAME_KEY = 'better-github-profile:username';
 const NO_USER_HINT = 'Enter your username to get direct links';
+/** Tooltip of a repo link that waits for the lookup (or for the repository to exist). */
+const NO_REPO_HINT = 'Turns on once your profile repository is found';
 
+/** What the user status line says after `?auth=…`, until the user types. */
+const AUTH_NOTICES: Record<AuthOutcome, string> = {
+  cancelled: 'Sign-in cancelled. Type your username instead.',
+  failed: 'Sign-in didn’t work. Type your username, or try signing in again.',
+  unavailable: 'Sign-in isn’t available right now. Type your username instead.',
+};
+
+const userBox = el('#start');
+const startLabel = el('#start-label');
 const usernameInput = el<HTMLInputElement>('#username');
 const userStatus = el('#user-status');
+const linksHint = el('#links-hint');
 const checkButton = el<HTMLButtonElement>('#check-setup');
 const checkResult = el('#check-result');
 
@@ -196,11 +209,19 @@ const lookups = new Map<string, RepoLookup>();
 const inFlight = new Map<string, Promise<RepoLookup>>();
 /** The name is looked up on Enter, on leaving the field, or after a pause: never per keystroke. */
 const typingPause = whenTypingStops(() => void lookUp());
+/** Why sign-in came back without a login (`?auth=…`): shown in the status line until the user types. */
+let authNotice: string | null = null;
 
-/** `<owner>/<owner>` and the branch the links use; null without a valid username. */
+/**
+ * `<owner>/<owner>` and the branch the repo links use, once the lookup has an answer: the
+ * repository as found, or, when GitHub couldn't be asked (rate limit, network, HTTP error),
+ * the typed name on branch `main`. Null, so the links stay off, without a valid username,
+ * while the name is typed or looked up, and when the repository doesn't exist.
+ */
 function repoTarget(): { owner: string; branch: string } | null {
-  if (!isGitHubUsername(username)) return null;
-  if (lookup !== null && lookup !== 'pending' && lookup.kind === 'found') return lookup;
+  if (!isGitHubUsername(username) || lookup === null || lookup === 'pending') return null;
+  if (lookup.kind === 'found') return lookup;
+  if (lookup.kind === 'missing') return null;
   return { owner: username, branch: 'main' };
 }
 
@@ -240,6 +261,7 @@ function troubleText(t: Trouble): string {
 
 function renderRepoLinks(): void {
   const target = repoTarget();
+  const valid = isGitHubUsername(username);
   const links = target ? profileRepoLinks(target.owner, target.branch) : null;
   for (const a of document.querySelectorAll<HTMLAnchorElement>('a[data-repo-link]')) {
     const key = a.dataset.repoLink as Exclude<keyof ProfileRepoLinks, 'repo' | 'newRepo'>;
@@ -247,7 +269,7 @@ function renderRepoLinks(): void {
     if (href === null) {
       a.removeAttribute('href');
       a.setAttribute('aria-disabled', 'true');
-      a.title = NO_USER_HINT;
+      a.title = valid ? NO_REPO_HINT : NO_USER_HINT;
     } else {
       a.href = href;
       a.removeAttribute('aria-disabled');
@@ -257,15 +279,25 @@ function renderRepoLinks(): void {
   for (const name of document.querySelectorAll('[data-repo-name]')) {
     name.textContent = target ? `${target.owner}/${target.owner}` : 'your profile repository';
   }
-  checkButton.disabled = target === null || checkButton.dataset.busy === 'true';
-  checkButton.title = target === null ? NO_USER_HINT : '';
+  linksHint.hidden = target !== null;
+  // The check looks the repository up itself (and says when it is missing): any valid name will do.
+  checkButton.disabled = !valid || checkButton.dataset.busy === 'true';
+  checkButton.title = valid ? '' : NO_USER_HINT;
 }
 
 function renderUserStatus(): void {
   const repoName = `${username}/${username}`;
+  const found = isGitHubUsername(username) && lookup !== null && lookup !== 'pending' && lookup.kind === 'found';
+  // The box stops shouting once its job is done.
+  userBox.classList.toggle('done', found);
+  startLabel.textContent = found ? 'Done' : 'Start here';
   userStatus.dataset.tone = '';
   usernameInput.removeAttribute('aria-invalid');
-  if (username === '') {
+  if (authNotice !== null) {
+    if (username !== '' && !isGitHubUsername(username)) usernameInput.setAttribute('aria-invalid', 'true');
+    userStatus.dataset.tone = 'warn';
+    userStatus.replaceChildren(authNotice);
+  } else if (username === '') {
     userStatus.replaceChildren(`${NO_USER_HINT}.`);
   } else if (typingPause.typing && lookup === null) {
     userStatus.replaceChildren('Looking up when you stop typing…');
@@ -364,6 +396,10 @@ function setUsername(value: string): void {
 }
 
 usernameInput.addEventListener('input', () => {
+  if (authNotice !== null) {
+    authNotice = null; // typing is the answer to "type your username instead"
+    renderUserStatus();
+  }
   if (usernameInput.value.trim() === username) return; // e.g. a trailing space
   typingPause.typed(usernameInput.value.trim());
   setUsername(usernameInput.value);
@@ -373,6 +409,15 @@ usernameInput.addEventListener('change', () => typingPause.commit(username));
 usernameInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.isComposing) typingPause.commit(username);
 });
+
+// The hint above step 1 jumps back to the box and puts the cursor in it.
+el('#links-hint-link').addEventListener('click', (e) => {
+  e.preventDefault();
+  userBox.scrollIntoView({ block: 'nearest' });
+  usernameInput.focus({ preventScroll: true });
+});
+
+el<HTMLAnchorElement>('#sign-in').href = signInUrl(location.href);
 
 // --- Step 3: check setup ---
 
@@ -497,17 +542,30 @@ checkButton.addEventListener('click', async () => {
   }
 });
 
-let savedUsername = '';
-try {
-  savedUsername = localStorage.getItem(USERNAME_KEY) ?? '';
-} catch {
-  // Storage blocked: start empty.
+// The starting username: `?user=` (a shared link, or the end of sign-in), else the saved one.
+const landing = readLanding(location.search);
+const cleanSearch = withoutLanding(location.search);
+if (cleanSearch !== location.search) {
+  // Read once: a reload, or a later edit of the box, isn't overridden by a stale URL.
+  history.replaceState(history.state, '', `${location.pathname}${cleanSearch}${location.hash}`);
 }
-usernameInput.value = savedUsername;
+if (landing.auth !== null) authNotice = AUTH_NOTICES[landing.auth];
+
+let startUsername = landing.user ?? '';
+if (landing.user === null) {
+  try {
+    startUsername = localStorage.getItem(USERNAME_KEY) ?? '';
+  } catch {
+    // Storage blocked: start empty.
+  }
+}
+// Even an invalid `?user=` goes in the box: the status line says what is wrong with it.
+usernameInput.value = startUsername;
 
 el('#token-help').textContent = TOKEN_HELP;
 el('#workflow-path').textContent = WORKFLOW_PATH;
-setUsername(savedUsername);
+// Saved like a typed name, so the next visit starts from it too.
+setUsername(startUsername);
 render();
-// A saved name is a finished one: look it up now.
+// A name from the URL or from storage is a finished one: look it up now.
 if (username !== '') void lookUp();
