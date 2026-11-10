@@ -45,3 +45,30 @@ const normalize = (yaml: string) =>
 export function compareWorkflow(current: string, generated: string): 'same' | 'different' {
   return normalize(current) === normalize(generated) ? 'same' : 'different';
 }
+
+/** What step 2 offers: `checking` (nothing yet), Add (`missing`), Update (`different`), nothing (`same`), or both (`trouble`). */
+export type WorkflowView = 'checking' | 'missing' | 'same' | 'different' | 'trouble';
+
+export interface WorkflowViewInput {
+  /** The last read of the file (kept while a new one runs), a failed repository lookup, or undefined when nothing is known. */
+  file: WorkflowFile | undefined;
+  /** A read of the file is in flight. */
+  reading: boolean;
+  /** The repository links point somewhere: the repository was found, or GitHub couldn't be asked. */
+  hasTarget: boolean;
+  /** The workflow the page generates now. */
+  yaml: string;
+}
+
+/**
+ * Step 2's view. A known answer wins, even while a new read runs, so a refresh never flickers.
+ * With none yet, a read in flight is `checking`: Add is never offered before the file is known
+ * not to exist, or GitHub would refuse it ("a file with the same name already exists"). Without
+ * a target the links are off anyway, so the step reads as before: `missing`.
+ */
+export function workflowView({ file, reading, hasTarget, yaml }: WorkflowViewInput): WorkflowView {
+  if (!hasTarget) return 'missing';
+  if (file === undefined) return reading ? 'checking' : 'missing';
+  if (file.kind === 'found') return compareWorkflow(file.content, yaml);
+  return file.kind === 'missing' ? 'missing' : 'trouble';
+}

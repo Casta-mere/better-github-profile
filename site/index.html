@@ -202,7 +202,7 @@
                     id="workflow-new"
                     class="btn btn-primary"
                     data-repo-link="workflowNew"
-                    data-workflow-show="missing trouble"
+                    data-workflow-show="checking missing trouble"
                     target="_blank"
                     rel="noopener"
                   >
@@ -222,6 +222,9 @@
                 </div>
               </div>
               <div class="step-body">
+                <p class="note" data-workflow-show="checking" hidden>
+                  Checking whether <span data-repo-name>your profile repository</span> already has the workflow&hellip;
+                </p>
                 <p data-workflow-show="missing trouble">
                   The button opens GitHub&rsquo;s new-file page with the workflow filled in: click
                   <strong>Commit changes</strong>. Or save it yourself as <code id="workflow-path"></code>.

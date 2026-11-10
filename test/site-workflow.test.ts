@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Fetch } from '../site/check';
-import { compareWorkflow, fetchWorkflowFile } from '../site/workflow-state';
+import { compareWorkflow, fetchWorkflowFile, workflowView, type WorkflowFile } from '../site/workflow-state';
 import { DEFAULT_SETUP, workflowYaml } from '../src/snippets/index';
 
 /** A canned GitHub API answer, or a fetch that throws like a browser does when offline. */
@@ -115,5 +115,49 @@ describe('compareWorkflow', () => {
 
   it('is different when indentation changes, since YAML reads it', () => {
     expect(compareWorkflow(native.replace('    runs-on', '  runs-on'), native)).toBe('different');
+  });
+});
+
+describe('workflowView', () => {
+  const found = (content: string): WorkflowFile => ({ kind: 'found', content });
+  const view = (file: WorkflowFile | undefined, reading: boolean, yaml = native, hasTarget = true) =>
+    workflowView({ file, reading, hasTarget, yaml });
+
+  it('is checking while the first read is in flight, so Add is not offered yet', () => {
+    expect(view(undefined, true)).toBe('checking');
+  });
+
+  it('keeps the cached answer while a new read runs: no flicker back to checking', () => {
+    expect(view(found(native), true)).toBe('same');
+    expect(view(found(strip), true)).toBe('different');
+    expect(view({ kind: 'missing' }, true)).toBe('missing');
+    expect(view({ kind: 'rate-limited' }, true)).toBe('trouble');
+  });
+
+  it('is missing once the read settles on a 404', () => {
+    expect(view({ kind: 'missing' }, false)).toBe('missing');
+  });
+
+  it('compares a found file with the YAML the page generates now', () => {
+    expect(view(found(native), false)).toBe('same');
+    expect(view(found(native.replace(/\n/g, '\r\n')), false)).toBe('same');
+    expect(view(found(native), false, strip)).toBe('different');
+    expect(view(found(strip), false, strip)).toBe('same');
+  });
+
+  it('is trouble when GitHub gave no answer, for the file or for the repository', () => {
+    expect(view({ kind: 'rate-limited' }, false)).toBe('trouble');
+    expect(view({ kind: 'network-error' }, false)).toBe('trouble');
+    expect(view({ kind: 'http-error', status: 500 }, false)).toBe('trouble');
+  });
+
+  it('is missing with a target but nothing known and nothing in flight', () => {
+    expect(view(undefined, false)).toBe('missing');
+  });
+
+  it('is missing without a target: the links are off, and the step reads as before', () => {
+    expect(view(undefined, false, native, false)).toBe('missing');
+    expect(view(undefined, true, native, false)).toBe('missing');
+    expect(view({ kind: 'rate-limited' }, false, native, false)).toBe('missing');
   });
 });

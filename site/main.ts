@@ -26,7 +26,7 @@ import {
 import { readLanding, signInUrl, withoutLanding, type AuthOutcome } from './landing';
 import sample from './sample-snapshot.json';
 import { applyControl } from './state';
-import { compareWorkflow, fetchWorkflowFile, type WorkflowFile } from './workflow-state';
+import { fetchWorkflowFile, workflowView, type WorkflowFile } from './workflow-state';
 
 if (!validateSnapshot(sample)) throw new Error('site/sample-snapshot.json is not a valid snapshot');
 const snapshot: Snapshot = sample;
@@ -439,7 +439,7 @@ function loadWorkflowFile(owner: string, fresh = false): Promise<void> {
     pending = fetchWorkflowFile(owner, api)
       .then((file) => {
         workflowFiles.set(key, file);
-        renderWorkflowState();
+        renderRepoLinks(); // turns Add back on after `checking`, then renders step 2
       })
       .finally(() => workflowReads.delete(key));
     workflowReads.set(key, pending);
@@ -447,25 +447,35 @@ function loadWorkflowFile(owner: string, fresh = false): Promise<void> {
   return pending;
 }
 
-/** The workflow file in the repository the links point at; undefined while there is none to read (yet). */
-function workflowFileNow(): WorkflowFile | undefined {
-  if (lookup === null || lookup === 'pending' || lookup.kind === 'missing') return undefined;
+/**
+ * What is known about the workflow file in the repository the links point at (undefined: nothing
+ * yet), and whether a read of it is in flight.
+ */
+function workflowNow(): { file: WorkflowFile | undefined; reading: boolean } {
+  if (lookup === null || lookup === 'pending' || lookup.kind === 'missing') return { file: undefined, reading: false };
   // A failed repository lookup leaves the workflow unknown just the same.
-  return lookup.kind === 'found' ? workflowFiles.get(lookup.owner.toLowerCase()) : lookup;
+  if (lookup.kind !== 'found') return { file: lookup, reading: false };
+  const key = lookup.owner.toLowerCase();
+  return { file: workflowFiles.get(key), reading: workflowReads.has(key) };
 }
 
 /**
- * Step 2 (and step 4's note) for the workflow file: Add when it is missing or not read yet,
- * Update when it differs, "up to date" when it matches, both links when GitHub didn't say.
- * Compares the cached file with the current YAML, so a config change asks GitHub nothing.
+ * Step 2 (and step 4's note) for the workflow file, as `workflowView` decides: Add stays off
+ * until the first read settles. Runs after renderRepoLinks has set the links. Compares the
+ * cached file with the current YAML, so a config change asks GitHub nothing.
  */
 function renderWorkflowState(): void {
-  const file = workflowFileNow();
+  const { file, reading } = workflowNow();
   const target = repoTarget();
-  let view: 'missing' | 'same' | 'different' | 'trouble' = 'missing';
-  if (file?.kind === 'found') view = compareWorkflow(file.content, workflowYaml(setup));
-  else if (file !== undefined && file.kind !== 'missing' && target !== null) {
-    view = 'trouble';
+  const view = workflowView({ file, reading, hasTarget: target !== null, yaml: workflowYaml(setup) });
+  if (view === 'checking') {
+    // Add would hit GitHub's "already exists" if the file is there: wait for the answer.
+    const add = el<HTMLAnchorElement>('#workflow-new');
+    add.removeAttribute('href');
+    add.setAttribute('aria-disabled', 'true');
+    add.title = 'Checking whether the workflow already exists';
+  }
+  if (view === 'trouble' && target !== null && file !== undefined && file.kind !== 'found' && file.kind !== 'missing') {
     // Add stays the button; Update is offered here, so the header keeps two buttons on a phone.
     el('#workflow-trouble').replaceChildren(
       `Couldn’t check whether the workflow already exists: ${troubleText(file)} If it does, `,
