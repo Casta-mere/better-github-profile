@@ -1,6 +1,6 @@
 import * as core from '@actions/core';
 import { collectSnapshot } from '../collect/collect';
-import { readSnapshot, writeOutputs } from './files';
+import { listFiles, readSnapshot, removeFiles, writeOutputs } from './files';
 import { commitIfChanged } from './git';
 import { readInputs } from './inputs';
 import { run, type RunResult } from './run';
@@ -30,7 +30,10 @@ async function main(): Promise<void> {
       collect: () => collectSnapshot({ ...cfg, now }),
       readPrev: () => readSnapshot(`${cfg.outputDir}/snapshot.json`, (msg) => core.warning(msg)),
       write: (files) => writeOutputs(files),
+      list: (dir) => listFiles(dir),
+      remove: (paths) => removeFiles(paths),
       commit: (changed) => commitIfChanged(changed),
+      info: (msg) => core.info(msg),
       warn: (msg) => core.warning(msg),
       now,
     });

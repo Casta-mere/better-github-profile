@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { validateSnapshot, type Snapshot } from '../snapshot/types';
 import type { OutputFile } from './run';
@@ -44,4 +44,29 @@ export async function writeOutputs(files: OutputFile[]): Promise<string[]> {
     changed.push(f.path);
   }
   return changed;
+}
+
+/** The names of the regular files directly in `dir`; empty when the directory is missing. */
+export async function listFiles(dir: string): Promise<string[]> {
+  try {
+    const entries = await readdir(dir, { withFileTypes: true });
+    return entries.filter((e) => e.isFile()).map((e) => e.name);
+  } catch (err) {
+    if (isMissing(err)) return [];
+    throw err;
+  }
+}
+
+/** Deletes each file; returns the paths it deleted. A file that is already gone is skipped. */
+export async function removeFiles(paths: string[]): Promise<string[]> {
+  const removed: string[] = [];
+  for (const path of paths) {
+    try {
+      await unlink(path);
+      removed.push(path);
+    } catch (err) {
+      if (!isMissing(err)) throw err;
+    }
+  }
+  return removed;
 }
