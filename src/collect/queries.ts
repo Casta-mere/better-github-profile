@@ -42,6 +42,7 @@ export const REPOS_QUERY = `query($after: String, $isFork: Boolean, $privacy: Re
       pageInfo { hasNextPage endCursor }
       nodes {
         name
+        isFork
         isPrivate
         stargazerCount
         forkCount
@@ -87,6 +88,7 @@ export interface UserResponse {
 
 export interface RepoNode {
   name: string;
+  isFork: boolean;
   isPrivate: boolean;
   stargazerCount: number;
   forkCount: number;

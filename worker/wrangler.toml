@@ -16,6 +16,14 @@ name = "CHECK_LIMIT"
 namespace_id = "1001"
 simple = { limit = 60, period = 60 }
 
+# Per-IP limit for GET /profile/<login>, the selector page's live preview of a visitor's
+# public data. Each miss costs two or more GraphQL requests on the same GITHUB_TOKEN, and
+# the page keeps an answer for an hour, so 10 a minute is plenty for a person.
+[[ratelimits]]
+name = "PROFILE_LIMIT"
+namespace_id = "1002"
+simple = { limit = 10, period = 60 }
+
 # "Sign in with GitHub" (/auth/start, /auth/callback) sends the browser back here, or to a
 # page under it (or to http://localhost / http://127.0.0.1 for local `vite` dev).
 #

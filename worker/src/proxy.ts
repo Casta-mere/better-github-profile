@@ -17,7 +17,7 @@ export interface Deps {
 
 const API = 'https://api.github.com';
 /** GitHub's username rule, the same as `src/snippets/links.ts`. */
-const USER = '[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38}';
+export const USER = '[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38}';
 /** `<u>/<u>` itself, any file or directory in it, or the Actions reads `site/check.ts` makes. */
 const ALLOWED = new RegExp(
   `^/repos/(${USER})/(${USER})` +

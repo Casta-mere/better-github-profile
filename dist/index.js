@@ -20462,6 +20462,63 @@ function describe(err) {
   return `${err.message}${cause}`;
 }
 
+// src/collect/profile.ts
+var TOP_REPOS = 6;
+function aggregate(p, o, now) {
+  const excluded = lowerSet(o.excludeRepos);
+  const repos = p.repos.filter(
+    (r) => (o.includeForks || !r.isFork) && (o.includePrivate || !r.isPrivate) && !excluded.has(r.name.toLowerCase())
+  );
+  const visible = (total, restricted) => o.includePrivate ? total : Math.max(0, total - restricted);
+  return {
+    schemaVersion: 1,
+    generatedAt: now.toISOString(),
+    user: {
+      login: p.user.login,
+      name: p.user.name?.trim() ? p.user.name : null,
+      createdYear: new Date(p.user.createdAt).getUTCFullYear(),
+      followers: p.user.followers
+    },
+    repos: {
+      count: repos.length,
+      stars: sum(repos.map((r) => r.stars)),
+      forks: sum(repos.map((r) => r.forks)),
+      top: topRepos(repos)
+    },
+    contributions: {
+      allTime: sum(p.years.map((y) => visible(y.total, y.restricted))),
+      pastYear: visible(p.pastYear.total, p.pastYear.restricted),
+      commits: p.pastYear.commits,
+      pullRequests: p.pastYear.pullRequests,
+      issues: p.pastYear.issues,
+      reviews: p.pastYear.reviews,
+      private: o.includePrivate ? p.pastYear.restricted : 0
+    },
+    calendar: { weeks: [...p.pastYear.weeks] },
+    languages: languageTotals(repos, lowerSet(o.excludeLangs))
+  };
+}
+function topRepos(repos) {
+  return repos.filter((r) => !r.isPrivate).sort((a, b) => b.stars - a.stars).slice(0, TOP_REPOS).map((r) => ({ name: r.name, stars: r.stars, language: r.language }));
+}
+function languageTotals(repos, excluded) {
+  const totals = /* @__PURE__ */ new Map();
+  for (const repo of repos) {
+    for (const { name, color, bytes } of repo.languages) {
+      if (excluded.has(name.toLowerCase())) continue;
+      const entry = totals.get(name);
+      if (!entry) totals.set(name, { name, color, bytes });
+      else {
+        entry.bytes += bytes;
+        entry.color ??= color;
+      }
+    }
+  }
+  return [...totals.values()].sort((a, b) => b.bytes - a.bytes || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+}
+var lowerSet = (xs) => new Set(xs.map((x) => x.toLowerCase()));
+var sum = (xs) => xs.reduce((a, b) => a + b, 0);
+
 // src/collect/queries.ts
 var USER_QUERY = `query {
   viewer {
@@ -20496,6 +20553,7 @@ var REPOS_QUERY = `query($after: String, $isFork: Boolean, $privacy: RepositoryP
       pageInfo { hasNextPage endCursor }
       nodes {
         name
+        isFork
         isPrivate
         stargazerCount
         forkCount
@@ -20517,53 +20575,36 @@ var YEAR_QUERY = `query($from: DateTime!, $to: DateTime!) {
 }`;
 
 // src/collect/collect.ts
-var TOP_REPOS = 6;
 async function collectSnapshot(opts) {
   const now = opts.now ?? (() => /* @__PURE__ */ new Date());
   const query = (q, variables) => graphql({ token: opts.token, query: q, variables, fetch: opts.fetch });
   const { viewer } = await query(USER_QUERY);
   const cc = viewer.contributionsCollection;
-  const excluded = lowerSet(opts.excludeRepos);
-  const repos = (await fetchRepos(query, opts)).filter((r) => !excluded.has(r.name.toLowerCase()));
-  const visible = (total, restricted) => opts.includePrivate ? total : Math.max(0, total - restricted);
-  let allTime = 0;
+  const repos = await fetchRepos(query, opts);
+  const years = [];
   for (const year of cc.contributionYears) {
     const { viewer: y } = await query(YEAR_QUERY, {
       from: `${year}-01-01T00:00:00Z`,
       to: `${year}-12-31T23:59:59Z`
     });
     const yc = y.contributionsCollection;
-    allTime += visible(yc.contributionCalendar.totalContributions, yc.restrictedContributionsCount);
+    years.push({ year, total: yc.contributionCalendar.totalContributions, restricted: yc.restrictedContributionsCount });
   }
-  return {
-    schemaVersion: 1,
-    generatedAt: now().toISOString(),
-    user: {
-      login: viewer.login,
-      name: viewer.name?.trim() ? viewer.name : null,
-      createdYear: new Date(viewer.createdAt).getUTCFullYear(),
-      followers: viewer.followers.totalCount
-    },
-    repos: {
-      count: repos.length,
-      stars: sum(repos.map((r) => r.stargazerCount)),
-      forks: sum(repos.map((r) => r.forkCount)),
-      top: topRepos(repos)
-    },
-    contributions: {
-      allTime,
-      pastYear: visible(cc.contributionCalendar.totalContributions, cc.restrictedContributionsCount),
+  const profile = {
+    user: { login: viewer.login, name: viewer.name, createdAt: viewer.createdAt, followers: viewer.followers.totalCount },
+    pastYear: {
+      total: cc.contributionCalendar.totalContributions,
+      restricted: cc.restrictedContributionsCount,
       commits: cc.totalCommitContributions,
       pullRequests: cc.totalPullRequestContributions,
       issues: cc.totalIssueContributions,
       reviews: cc.totalPullRequestReviewContributions,
-      private: opts.includePrivate ? cc.restrictedContributionsCount : 0
+      weeks: cc.contributionCalendar.weeks.map((w) => sum2(w.contributionDays.map((d) => d.contributionCount)))
     },
-    calendar: {
-      weeks: cc.contributionCalendar.weeks.map((w) => sum(w.contributionDays.map((d) => d.contributionCount)))
-    },
-    languages: languageTotals(repos, lowerSet(opts.excludeLangs))
+    years,
+    repos: repos.map(toProfileRepo)
   };
+  return aggregate(profile, opts, now());
 }
 async function fetchRepos(query, opts) {
   const nodes = [];
@@ -20580,26 +20621,18 @@ async function fetchRepos(query, opts) {
     after = pageInfo.endCursor;
   }
 }
-function topRepos(repos) {
-  return repos.filter((r) => !r.isPrivate).sort((a, b) => b.stargazerCount - a.stargazerCount).slice(0, TOP_REPOS).map((r) => ({ name: r.name, stars: r.stargazerCount, language: r.primaryLanguage?.name ?? null }));
+function toProfileRepo(r) {
+  return {
+    name: r.name,
+    isPrivate: r.isPrivate,
+    isFork: r.isFork,
+    stars: r.stargazerCount,
+    forks: r.forkCount,
+    language: r.primaryLanguage?.name ?? null,
+    languages: (r.languages?.edges ?? []).map(({ size, node }) => ({ name: node.name, color: node.color, bytes: size }))
+  };
 }
-function languageTotals(repos, excluded) {
-  const totals = /* @__PURE__ */ new Map();
-  for (const repo of repos) {
-    for (const { size, node } of repo.languages?.edges ?? []) {
-      if (excluded.has(node.name.toLowerCase())) continue;
-      const entry = totals.get(node.name);
-      if (!entry) totals.set(node.name, { name: node.name, color: node.color, bytes: size });
-      else {
-        entry.bytes += size;
-        entry.color ??= node.color;
-      }
-    }
-  }
-  return [...totals.values()].sort((a, b) => b.bytes - a.bytes || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
-}
-var lowerSet = (xs) => new Set(xs.map((x) => x.toLowerCase()));
-var sum = (xs) => xs.reduce((a, b) => a + b, 0);
+var sum2 = (xs) => xs.reduce((a, b) => a + b, 0);
 
 // src/action/files.ts
 import { mkdir as mkdir2, readFile, writeFile as writeFile2 } from "node:fs/promises";
@@ -20746,14 +20779,14 @@ var FONT_STACK = '-apple-system,"Segoe UI",Helvetica,Arial,sans-serif';
 var round1 = (x) => Math.round(x * 10) / 10;
 function topLanguages(s, n) {
   const sorted = [...s.languages].sort((a, b) => b.bytes - a.bytes);
-  const total = sorted.reduce((sum2, l) => sum2 + l.bytes, 0);
+  const total = sorted.reduce((sum3, l) => sum3 + l.bytes, 0);
   if (total <= 0) return [];
   const top = sorted.slice(0, n).map((l) => ({
     name: l.name,
     color: l.color ?? OTHER_COLOR,
     pct: round1(l.bytes / total * 100)
   }));
-  const rest = sorted.slice(n).reduce((sum2, l) => sum2 + l.bytes, 0);
+  const rest = sorted.slice(n).reduce((sum3, l) => sum3 + l.bytes, 0);
   if (rest > 0) top.push({ name: "Other", color: OTHER_COLOR, pct: round1(rest / total * 100) });
   return top;
 }
@@ -20929,12 +20962,12 @@ function languageBar(slices, box) {
   const r = box.height / 2;
   const frame = `x="${num(box.x)}" y="${num(box.y)}" width="${num(box.width)}" height="${num(box.height)}" rx="${num(r)}"`;
   const shown = slices.filter((l) => l.pct > 0);
-  const sum2 = shown.reduce((a, l) => a + l.pct, 0);
-  if (shown.length === 0 || sum2 <= 0) return [`<rect ${frame} fill="${box.track}"/>`];
+  const sum3 = shown.reduce((a, l) => a + l.pct, 0);
+  if (shown.length === 0 || sum3 <= 0) return [`<rect ${frame} fill="${box.track}"/>`];
   const avail = Math.max(0, box.width - box.gap * (shown.length - 1));
   let x = box.x;
   const segs = shown.map((l) => {
-    const w = Math.max(0, l.pct / sum2 * avail);
+    const w = Math.max(0, l.pct / sum3 * avail);
     const rect = `<rect x="${num(x)}" y="${num(box.y)}" width="${num(w)}" height="${num(box.height)}" fill="${escapeXml(l.color)}"/>`;
     x += w + box.gap;
     return rect;

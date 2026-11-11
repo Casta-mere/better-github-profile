@@ -6,6 +6,7 @@
         "nodes": [
           {
             "name": "Dash-Board",
+            "isFork": false,
             "isPrivate": false,
             "stargazerCount": 2,
             "forkCount": 0,
@@ -20,6 +21,7 @@
           },
           {
             "name": "CPP-Ticket",
+            "isFork": false,
             "isPrivate": false,
             "stargazerCount": 2,
             "forkCount": 0,
@@ -34,6 +36,7 @@
           },
           {
             "name": "Safehome",
+            "isFork": false,
             "isPrivate": false,
             "stargazerCount": 1,
             "forkCount": 0,
@@ -48,6 +51,7 @@
           },
           {
             "name": "fzf_scripts",
+            "isFork": false,
             "isPrivate": false,
             "stargazerCount": 1,
             "forkCount": 0,
@@ -56,6 +60,7 @@
           },
           {
             "name": "Diary",
+            "isFork": false,
             "isPrivate": true,
             "stargazerCount": 0,
             "forkCount": 0,
@@ -64,6 +69,7 @@
           },
           {
             "name": "perl-notes",
+            "isFork": false,
             "isPrivate": false,
             "stargazerCount": 0,
             "forkCount": 0,
