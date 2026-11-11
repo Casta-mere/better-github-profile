@@ -21195,11 +21195,17 @@ function strip(s, o) {
     }
   });
   const pillW = x + 1;
-  body.push(
+  const pill = [
     `<rect x="0.5" y="${MARGIN_Y + 0.5}" width="${num(pillW - 1)}" height="${PILL_H - 1}" rx="${(PILL_H - 1) / 2}" fill="none" stroke="${p.bd}"/>`,
     ...rules.map((rx) => `<path d="M${num(rx)} ${MARGIN_Y + 1}v${PILL_H - 2}" stroke="${p.bd}"/>`),
     ...texts
-  );
+  ];
+  if (pillW <= W2) body.push(...pill);
+  else {
+    const k = Math.floor(W2 / pillW * 1e4) / 1e4;
+    const ty = (MARGIN_Y + PILL_H / 2) * (1 - k);
+    body.push(`<g transform="translate(0 ${num(ty)}) scale(${k})">`, ...pill, "</g>");
+  }
   const mid = LINE2_TOP + LINE2_H / 2;
   const base = mid + 4.5;
   let x2 = 0;

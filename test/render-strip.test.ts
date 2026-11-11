@@ -119,6 +119,29 @@ describe('theme strip', () => {
       const pill = svg.match(/<rect x="0.5" y="[\d.]+" width="([\d.]+)"/)!;
       expect(Number(pill[1])).toBeLessThanOrEqual(819);
       expect(texts(svg).slice(0, 6).every((x) => x.startsWith('99,999 '))).toBe(true);
+      expect(svg).not.toContain('transform');
+    }
+  });
+
+  it.each([9_999_999, 999_999_999])('six of the widest stats at %i shrink to fit the 820px card', (n) => {
+    const big: Snapshot = {
+      ...casta,
+      user: { ...casta.user, followers: n },
+      contributions: { allTime: n, pastYear: n, commits: n, pullRequests: n, issues: n, reviews: n, private: n },
+    };
+    const stats = ['allTime', 'pastYear', 'followers', 'commits', 'reviews', 'private'] as const;
+    for (const mode of MODES) {
+      const svg = THEMES.strip.render('strip', big, { mode, stats: [...stats] });
+      const [, ty, k] = svg.match(/<g transform="translate\(0 ([\d.]+)\) scale\(([\d.]+)\)">/)!;
+      const width = Number(svg.match(/<rect x="0.5" y="[\d.]+" width="([\d.]+)"/)![1]);
+      // The border's outer edge, stroke included, is at width + 1 before the scale.
+      expect(Number(k)).toBeLessThan(1);
+      expect((width + 1) * Number(k)).toBeLessThanOrEqual(820);
+      // Still centred in the pill's band (y 8..38).
+      expect(23 * Number(k) + Number(ty)).toBeCloseTo(23, 1);
+      const value = fmtInt(n);
+      const labels = ['contributions', 'past year', 'followers', 'commits', 'reviews', 'private'];
+      expect(texts(svg).slice(0, 6)).toEqual(labels.map((l) => `${value} ${l}`));
     }
   });
 
