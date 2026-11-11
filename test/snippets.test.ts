@@ -18,7 +18,12 @@ describe('DEFAULT_SETUP', () => {
       outputDir: 'cards',
       telemetry: true,
       readmeFormat: 'picture',
+      stats: THEMES.native.defaultStats,
     });
+  });
+
+  it('stats are the native default', () => {
+    expect(DEFAULT_SETUP.stats).toEqual([...THEMES.native.defaultStats]);
   });
 });
 
@@ -83,6 +88,20 @@ describe('workflowYaml', () => {
     for (const c of [DEFAULT_SETUP, setup({ theme: 'strip', includeForks: true, outputDir: 'assets' })]) {
       expect(workflowYaml({ ...c, readmeFormat: 'markdown' })).toBe(workflowYaml({ ...c, readmeFormat: 'picture' }));
     }
+  });
+
+  it('leaves stats out when they are the theme default', () => {
+    expect(workflowYaml(DEFAULT_SETUP)).not.toMatch(/^\s+stats:/m);
+    const strip = setup({ theme: 'strip', cards: ['strip'], stats: [...THEMES.strip.defaultStats] });
+    expect(workflowYaml(strip)).not.toMatch(/^\s+stats:/m);
+  });
+
+  it('emits stats, in order, after cards when they differ from the theme default', () => {
+    expect(workflowYaml(setup({ stats: ['followers', 'stars'] }))).toMatch(/^ {10}stats: followers,stars$/m);
+    const y = workflowYaml(setup({ cards: ['overview'], stats: ['stars'] }));
+    expect(y).toMatch(/^ {10}cards: overview\n {10}stats: stars$/m);
+    // Same keys, another order: still a change.
+    expect(workflowYaml(setup({ stats: ['forks', 'stars', 'allTime', 'pastYear', 'repos'] }))).toMatch(/^ {10}stats: forks,stars,/m);
   });
 
   it('names the file users save it as', () => expect(WORKFLOW_PATH).toBe('.github/workflows/profile-cards.yml'));

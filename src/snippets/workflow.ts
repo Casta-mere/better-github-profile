@@ -1,4 +1,4 @@
-import { THEMES } from '../render/index';
+import { THEMES, type StatKey } from '../render/index';
 import type { ThemeName } from '../snapshot/types';
 
 /**
@@ -19,6 +19,8 @@ export interface SetupConfig {
   telemetry: boolean;
   /** Only shapes the README markup; not an Action input, so the workflow ignores it. */
   readmeFormat: ReadmeFormat;
+  /** The stats on the cards that show them, in order: at least one, at most the theme's `maxStats`. */
+  stats: StatKey[];
 }
 
 /** The Action's own defaults (a workflow generated from this has no optional inputs), and `<picture>`. */
@@ -32,6 +34,7 @@ export const DEFAULT_SETUP: SetupConfig = {
   outputDir: 'cards',
   telemetry: true,
   readmeFormat: 'picture',
+  stats: [...THEMES.native.defaultStats],
 };
 
 /** Where users save the generated workflow. */
@@ -70,6 +73,10 @@ export function workflowYaml(c: SetupConfig): string {
   if (c.theme !== DEFAULT_SETUP.theme) inputs.push(['theme', c.theme]);
   const cards = selectedCards(c);
   if (cards.length < THEMES[c.theme].cards.length) inputs.push(['cards', yamlValue(cards.join(','))]);
+  const stats = THEMES[c.theme].defaultStats;
+  if (c.stats.length !== stats.length || c.stats.some((k, i) => k !== stats[i])) {
+    inputs.push(['stats', yamlValue(c.stats.join(','))]);
+  }
   if (!c.includePrivate) inputs.push(['include_private', 'false']);
   if (c.includeForks) inputs.push(['include_forks', 'true']);
   const repos = cleanList(c.excludeRepos);

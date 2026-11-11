@@ -1,4 +1,4 @@
-import { renderCards, THEMES } from '../src/render/index';
+import { renderCards, STAT_KEYS, THEMES, type StatKey } from '../src/render/index';
 import { validateSnapshot, type Mode, type Snapshot } from '../src/snapshot/types';
 import {
   DEFAULT_SETUP,
@@ -40,6 +40,7 @@ function el<T extends Element = HTMLElement>(selector: string): T {
 
 const controls = el<HTMLFormElement>('#controls');
 const cardList = el('#cards');
+const statList = el<HTMLOListElement>('#stats');
 const preview = el('#preview');
 
 let setup: SetupConfig = { ...DEFAULT_SETUP, cards: [...DEFAULT_SETUP.cards] };
@@ -80,6 +81,144 @@ function renderCardChecks(): void {
   }
 }
 
+/** Each stat's name on the page. Written out, so test/site-i18n.test.ts sees every key in use. */
+const STAT_LABELS = {
+  stars: 'stat.stars',
+  forks: 'stat.forks',
+  allTime: 'stat.allTime',
+  pastYear: 'stat.pastYear',
+  repos: 'stat.repos',
+  followers: 'stat.followers',
+  commits: 'stat.commits',
+  pullRequests: 'stat.pullRequests',
+  issues: 'stat.issues',
+  reviews: 'stat.reviews',
+  private: 'stat.private',
+  joined: 'stat.joined',
+} as const satisfies Record<StatKey, Key>;
+
+/** The stat picker's rows, made once and moved around: a moved row keeps its focus and drag. */
+const statRows = new Map<StatKey, HTMLLIElement>();
+
+function moveButton(k: StatKey, by: -1 | 1): HTMLButtonElement {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'move';
+  b.dataset.move = String(by);
+  b.setAttribute('aria-describedby', `stat-name-${k}`);
+  b.textContent = by < 0 ? '↑' : '↓';
+  b.addEventListener('click', () => moveStat(k, by));
+  return b;
+}
+
+function statRow(k: StatKey): HTMLLIElement {
+  const li = document.createElement('li');
+  li.className = 'stat';
+  li.dataset.stat = k;
+  const grip = document.createElement('span');
+  grip.className = 'grip';
+  grip.setAttribute('aria-hidden', 'true');
+  const label = document.createElement('label');
+  const input = document.createElement('input');
+  input.type = 'checkbox';
+  input.name = `stat-${k}`;
+  input.addEventListener('change', () => {
+    const stats = input.checked ? [...setup.stats, k] : setup.stats.filter((x) => x !== k);
+    setStats(stats);
+  });
+  const name = document.createElement('span');
+  name.id = `stat-name-${k}`;
+  label.append(input, name);
+  li.append(grip, label, moveButton(k, -1), moveButton(k, 1));
+  return li;
+}
+
+/** Takes the chosen stats, in card order; the reducer keeps the old list if this one can't be shown. */
+function setStats(stats: StatKey[]): void {
+  setup = applyControl(setup, 'stats', stats.join(','));
+  render();
+}
+
+/** Moves a chosen stat one place up or down among the chosen ones, keeping the focus on its arrow. */
+function moveStat(k: StatKey, by: -1 | 1): void {
+  const i = setup.stats.indexOf(k);
+  const j = i + by;
+  if (i < 0 || j < 0 || j >= setup.stats.length) return;
+  const stats = [...setup.stats];
+  [stats[i], stats[j]] = [stats[j]!, stats[i]!];
+  setStats(stats);
+  const row = statRows.get(k)!;
+  const same = row.querySelector<HTMLButtonElement>(`button[data-move="${by}"]`)!;
+  const other = row.querySelector<HTMLButtonElement>(`button[data-move="${-by}"]`)!;
+  (same.disabled ? other : same).focus();
+}
+
+/**
+ * The stat picker: chosen stats first, in card order, then the rest in their usual order.
+ * The last chosen stat can't be unticked; at the theme's cap the others can't be ticked.
+ * Only chosen rows move (by arrow or drag): the others have no place on the card.
+ */
+function renderStatChecks(): void {
+  const order = [...setup.stats, ...STAT_KEYS.filter((k) => !setup.stats.includes(k))];
+  const rows = order.map((k) => {
+    let row = statRows.get(k);
+    if (row === undefined) statRows.set(k, (row = statRow(k)));
+    return row;
+  });
+  // Only when the order changed: moving a row in the DOM would end a drag in progress.
+  if (rows.some((row, i) => statList.children[i] !== row)) statList.append(...rows);
+  const max = THEMES[setup.theme].maxStats;
+  const onlyOne = setup.stats.length === 1;
+  const full = setup.stats.length >= max;
+  for (const [i, k] of order.entries()) {
+    const row = rows[i]!;
+    const on = i < setup.stats.length;
+    const input = row.querySelector('input')!;
+    input.checked = on;
+    input.disabled = on ? onlyOne : full;
+    row.querySelector('label')!.title = !input.disabled ? '' : on ? t('controls.lastStat') : t('controls.statsCap', { max });
+    row.querySelector('label span')!.textContent = t(STAT_LABELS[k]);
+    row.classList.toggle('off', !on);
+    row.draggable = on && !onlyOne;
+    for (const b of row.querySelectorAll<HTMLButtonElement>('button[data-move]')) {
+      const up = b.dataset.move === '-1';
+      b.disabled = !on || (up ? i === 0 : i === setup.stats.length - 1);
+      b.title = t(up ? 'controls.moveUp' : 'controls.moveDown');
+      b.setAttribute('aria-label', b.title);
+    }
+  }
+}
+
+// Drag to reorder the chosen stats: the row follows the pointer and the preview redraws on every move.
+let dragged: HTMLLIElement | null = null;
+statList.addEventListener('dragstart', (e) => {
+  if (!(e.target instanceof HTMLLIElement) || !e.target.draggable) return;
+  dragged = e.target;
+  dragged.classList.add('dragging');
+  if (e.dataTransfer) {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', dragged.dataset.stat ?? '');
+  }
+});
+statList.addEventListener('dragover', (e) => {
+  if (dragged === null || !(e.target instanceof Element)) return;
+  const over = e.target.closest<HTMLLIElement>('li[data-stat]');
+  // Chosen rows only: an unticked row has no place on the card to move to.
+  if (over === null || over.classList.contains('off')) return;
+  e.preventDefault();
+  if (over === dragged) return;
+  const box = over.getBoundingClientRect();
+  const before = e.clientY < box.top + box.height / 2 ? over : over.nextElementSibling;
+  if (before === dragged || before === dragged.nextElementSibling) return;
+  statList.insertBefore(dragged, before);
+  setStats([...statList.querySelectorAll<HTMLLIElement>('li.stat:not(.off)')].map((li) => li.dataset.stat as StatKey));
+});
+statList.addEventListener('drop', (e) => e.preventDefault());
+statList.addEventListener('dragend', () => {
+  dragged?.classList.remove('dragging');
+  dragged = null;
+});
+
 function syncControls(): void {
   // Not only the form: the README format toggle sits in step 4's header.
   for (const input of document.querySelectorAll<HTMLInputElement>('input[data-control]')) {
@@ -91,10 +230,11 @@ function syncControls(): void {
     }
   }
   renderCardChecks();
+  renderStatChecks();
 }
 
 function renderPreview(): void {
-  const cards = renderCards(snapshot, { theme: setup.theme, cards: setup.cards }).filter((c) =>
+  const cards = renderCards(snapshot, { theme: setup.theme, cards: setup.cards, stats: setup.stats }).filter((c) =>
     c.file.endsWith(`-${mode}.svg`),
   );
   preview.dataset.mode = mode;
@@ -671,6 +811,7 @@ for (const radio of langRadios) {
     if (search !== location.search) history.replaceState(history.state, '', `${location.pathname}${search}${location.hash}`);
     // Only words change: the form, the lookup and the check keep their state.
     renderCardChecks();
+    renderStatChecks();
     renderUserStatus();
     renderRepoLinks();
     checkView?.();

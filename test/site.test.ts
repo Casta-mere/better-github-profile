@@ -74,7 +74,35 @@ describe('applyControl', () => {
     applyControl(DEFAULT_SETUP, 'theme', 'strip');
     applyControl(DEFAULT_SETUP, 'excludeRepos', 'x');
     applyControl(DEFAULT_SETUP, 'readmeFormat', 'markdown');
+    applyControl(DEFAULT_SETUP, 'stats', 'joined');
     expect(DEFAULT_SETUP).toEqual(before);
+  });
+
+  it('stats sets an ordered list', () => {
+    expect(applyControl(DEFAULT_SETUP, 'stats', 'joined,stars').stats).toEqual(['joined', 'stars']);
+  });
+
+  it('stats drops unknown keys and duplicates', () => {
+    expect(applyControl(DEFAULT_SETUP, 'stats', 'joined,Stars,nope,joined, forks').stats).toEqual(['joined', 'forks']);
+  });
+
+  it('stats left empty keeps the setup unchanged', () => {
+    expect(applyControl(DEFAULT_SETUP, 'stats', '')).toBe(DEFAULT_SETUP);
+    expect(applyControl(DEFAULT_SETUP, 'stats', 'nope')).toBe(DEFAULT_SETUP);
+  });
+
+  it('stats over the theme cap keeps the setup unchanged', () => {
+    const strip = applyControl(DEFAULT_SETUP, 'theme', 'strip');
+    const seven = 'stars,forks,allTime,pastYear,repos,followers,commits';
+    expect(applyControl(strip, 'stats', seven)).toBe(strip);
+    expect(applyControl(strip, 'stats', 'stars,forks,allTime,pastYear,repos,followers').stats).toHaveLength(6);
+    expect(applyControl(DEFAULT_SETUP, 'stats', seven).stats).toHaveLength(7); // native has no such cap
+  });
+
+  it('theme switch resets stats to the theme default', () => {
+    const many = applyControl(DEFAULT_SETUP, 'stats', 'stars,forks,allTime,pastYear,repos,followers,commits,joined');
+    expect(applyControl(many, 'theme', 'strip').stats).toEqual(['allTime', 'pastYear', 'repos', 'stars', 'followers']);
+    expect(applyControl(many, 'theme', 'native').stats).toEqual(['stars', 'forks', 'allTime', 'pastYear', 'repos']);
   });
 
   it('rejects an unknown control or a value of the wrong type', () => {
