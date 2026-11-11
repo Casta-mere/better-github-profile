@@ -1,7 +1,8 @@
 import type { Snapshot } from '../../snapshot/types';
 import { topLanguages } from '../languages';
 import { FONT_STACK, PRIMER, type Palette } from '../primer';
-import { escapeXml, fmtInt, languageBar, num, sparkline, staleText, svgDoc, textWidth, truncate } from '../svg';
+import { escapeXml, languageBar, num, sparkline, staleText, svgDoc, textWidth, truncate } from '../svg';
+import { STATS, statValue } from '../stats';
 import { defineTheme, type RenderOptions } from '../theme';
 
 // Layout of option J in card-styles-3.html: 820px wide, no card frame. Line 1 is a pill
@@ -45,18 +46,12 @@ function strip(s: Snapshot, o: RenderOptions): string {
 
   // Line 1: the pill.
   const pillBase = MARGIN_Y + 19.5;
-  const stats: [string, string, boolean?][] = [
-    [fmtInt(s.contributions.allTime), 'contributions'],
-    [fmtInt(s.contributions.pastYear), 'past year'],
-    [fmtInt(s.repos.count), 'repos'],
-    [fmtInt(s.repos.stars), '★', true],
-    [fmtInt(s.user.followers), 'followers'],
-  ];
+  const stats = (o.stats ?? stripTheme.defaultStats).map((k) => STATS[k]);
   const texts: string[] = [];
   const rules: number[] = [];
   let x = 1; // inside the pill's left border
-  stats.forEach(([value, label, labelFirst], i) => {
-    const sec = section(x + PILL_PAD_X, pillBase, value, label, labelFirst);
+  stats.forEach((stat, i) => {
+    const sec = section(x + PILL_PAD_X, pillBase, statValue(stat, s), stat.short, stat.labelFirst);
     texts.push(sec.text);
     x += PILL_PAD_X + sec.width + PILL_PAD_X;
     if (i < stats.length - 1) {
@@ -111,4 +106,9 @@ function strip(s: Snapshot, o: RenderOptions): string {
   return svgDoc({ width: W, height: H, title: `${who}'s GitHub stats`, css: css(p), body });
 }
 
-export const stripTheme = defineTheme('strip', { strip });
+// At most 6 stats: six of the widest labels with 5-digit numbers still fit in 820px.
+export const stripTheme = defineTheme(
+  'strip',
+  { defaultStats: ['allTime', 'pastYear', 'repos', 'stars', 'followers'], maxStats: 6 },
+  { strip },
+);

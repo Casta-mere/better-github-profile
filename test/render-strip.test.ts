@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { renderCards, THEMES } from '../src/render/index';
+import { fmtInt, renderCards, THEMES } from '../src/render/index';
 import { topLanguages } from '../src/render/languages';
 import type { Snapshot } from '../src/snapshot/types';
 import castaJson from './fixtures/snapshot-casta-mere.json';
@@ -82,6 +82,50 @@ describe('theme strip', () => {
     expect(() => renderCards(casta, { theme: 'strip', cards: ['overview'] })).toThrow(
       'Unknown card "overview" for theme "strip"; available: strip',
     ));
+
+  it('pill shows the chosen stats, in order', () => {
+    const t = texts(THEMES.strip.render('strip', casta, { mode: 'light', stats: ['reviews', 'stars'] }));
+    expect(t.slice(0, 2)).toEqual([`${casta.contributions.reviews} reviews`, '★ 21']);
+    expect(t[2]).toBe('52 wks');
+  });
+
+  it('pill labels for every stat', () => {
+    const t = texts(
+      THEMES.strip.render('strip', casta, { mode: 'light', stats: ['forks', 'commits', 'pullRequests', 'issues', 'private', 'joined'] }),
+    );
+    const c = casta.contributions;
+    expect(t.slice(0, 6)).toEqual([
+      '5 forks',
+      `${fmtInt(c.commits)} commits`,
+      `${fmtInt(c.pullRequests)} PRs`,
+      `${fmtInt(c.issues)} issues`,
+      `${fmtInt(c.private)} private`,
+      'since 2021',
+    ]);
+  });
+
+  it('six of the widest stats with large numbers fit in the 820px card', () => {
+    const n = 99999;
+    const big: Snapshot = {
+      ...casta,
+      user: { ...casta.user, followers: n, createdYear: n },
+      repos: { ...casta.repos, count: n, stars: n, forks: n },
+      contributions: { allTime: n, pastYear: n, commits: n, pullRequests: n, issues: n, reviews: n, private: n },
+    };
+    const stats = ['allTime', 'pastYear', 'followers', 'commits', 'reviews', 'private'] as const;
+    expect(stats).toHaveLength(THEMES.strip.maxStats);
+    for (const mode of MODES) {
+      const svg = THEMES.strip.render('strip', big, { mode, stats: [...stats] });
+      const pill = svg.match(/<rect x="0.5" y="[\d.]+" width="([\d.]+)"/)!;
+      expect(Number(pill[1])).toBeLessThanOrEqual(819);
+      expect(texts(svg).slice(0, 6).every((x) => x.startsWith('99,999 '))).toBe(true);
+    }
+  });
+
+  it('the default stats render the same as no stats', () => {
+    const svg = THEMES.strip.render('strip', casta, { mode: 'dark' });
+    expect(THEMES.strip.render('strip', casta, { mode: 'dark', stats: [...THEMES.strip.defaultStats] })).toBe(svg);
+  });
 
   it('matches file snapshots', async () => {
     for (const c of renderCards(casta, { theme: 'strip' })) await expect(c.svg).toMatchFileSnapshot(`__snapshots__/${c.file}`);

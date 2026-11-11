@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { renderCards, THEMES } from '../src/render/index';
+import { renderCards, STAT_KEYS, STATS, THEMES } from '../src/render/index';
 import { topLanguages } from '../src/render/languages';
 import { PRIMER } from '../src/render/primer';
 import { escapeXml, fmtInt, fmtPct } from '../src/render/svg';
@@ -158,6 +158,38 @@ describe('theme native', () => {
       'Unknown card "nope" for theme "native"; available: overview, languages',
     );
     expect(() => THEMES.native.render('nope', casta, { mode: 'light' })).toThrow('Unknown card "nope"');
+  });
+
+  it('overview shows the chosen stats, in order', () => {
+    const svg = THEMES.native.render('overview', casta, { mode: 'light', stats: ['followers', 'joined'] });
+    const t = texts(svg);
+    expect(t.slice(1, 5)).toEqual(['Followers', '22', 'On GitHub since', '2021']);
+    expect(t).not.toContain('2,021');
+    expect(t).not.toContain('Stars');
+    expect((svg.match(/<path class="ic"/g) ?? []).length).toBe(2);
+  });
+
+  it('overview: every stat has a row and an icon, commits has its own glyph', () => {
+    const svg = THEMES.native.render('overview', casta, { mode: 'light', stats: [...STAT_KEYS] });
+    const t = texts(svg);
+    for (const k of STAT_KEYS) expect(t).toContain(STATS[k].label);
+    const icons = [...svg.matchAll(/<path class="ic"[^>]* d="([^"]+)"/g)].map((m) => m[1]);
+    expect(icons).toHaveLength(STAT_KEYS.length);
+    expect(new Set(icons).size).toBe(STAT_KEYS.length);
+    expect(icons[STAT_KEYS.indexOf('commits')]).not.toBe(icons[STAT_KEYS.indexOf('allTime')]);
+    expect(svg).not.toMatch(/NaN|undefined|d=""/);
+  });
+
+  it('renderCards passes stats to the overview, the languages card ignores them', () => {
+    const [overview, , languages] = renderCards(casta, { theme: 'native', stats: ['repos'] });
+    expect(texts(overview.svg)).toContain('Repositories');
+    expect(texts(overview.svg)).not.toContain('Stars');
+    expect(languages.svg).toBe(THEMES.native.render('languages', casta, { mode: 'light' }));
+  });
+
+  it('the default stats render the same as no stats', () => {
+    const svg = THEMES.native.render('overview', casta, { mode: 'light' });
+    expect(THEMES.native.render('overview', casta, { mode: 'light', stats: [...THEMES.native.defaultStats] })).toBe(svg);
   });
 
   it('matches file snapshots', async () => {
