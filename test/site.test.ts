@@ -1,6 +1,8 @@
-import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { applyControl } from '../site/state';
+import sample from '../site/sample-profile.json';
+import { aggregate, validateProfileData, type ProfileData } from '../src/collect/profile';
+import { validateSnapshot } from '../src/snapshot/types';
 import { DEFAULT_SETUP } from '../src/snippets/index';
 
 describe('applyControl', () => {
@@ -112,10 +114,18 @@ describe('applyControl', () => {
   });
 });
 
-describe('site/sample-snapshot.json', () => {
-  it('is a byte-for-byte copy of test/fixtures/snapshot-casta-mere.json', () => {
-    const site = readFileSync(new URL('../site/sample-snapshot.json', import.meta.url));
-    const fixture = readFileSync(new URL('./fixtures/snapshot-casta-mere.json', import.meta.url));
-    expect(site.equals(fixture)).toBe(true);
+describe('site/sample-profile.json', () => {
+  it('is valid profile data', () => {
+    expect(validateProfileData(sample)).toBe(true);
+  });
+
+  it('names no private repository: they are private-1, private-2, …', () => {
+    const hidden = sample.repos.filter((r) => r.isPrivate);
+    expect(hidden.length).toBeGreaterThan(0);
+    for (const r of hidden) expect(r.name).toMatch(/^private-\d+$/);
+  });
+
+  it('aggregates into a valid snapshot', () => {
+    expect(validateSnapshot(aggregate(sample as ProfileData, DEFAULT_SETUP, new Date('2026-11-11T00:00:00Z')))).toBe(true);
   });
 });

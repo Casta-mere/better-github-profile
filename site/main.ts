@@ -1,5 +1,6 @@
 import { renderCards, STAT_KEYS, THEMES, type StatKey } from '../src/render/index';
-import { validateSnapshot, type Mode, type Snapshot } from '../src/snapshot/types';
+import { aggregate, validateProfileData, type ProfileData } from '../src/collect/profile';
+import type { Mode } from '../src/snapshot/types';
 import {
   DEFAULT_SETUP,
   isGitHubUsername,
@@ -25,12 +26,12 @@ import {
 import { nodes, translateElement, translatePage } from './i18n/dom';
 import { detectLang, getLang, setLang, t, toLang, withLang, type Key, type Lang } from './i18n/index';
 import { readLanding, signInUrl, withoutLanding, type AuthOutcome } from './landing';
-import sample from './sample-snapshot.json';
+import { acceptProfile, fetchProfile, readCachedProfile, writeCachedProfile } from './profile';
+import sample from './sample-profile.json';
 import { applyControl } from './state';
 import { fetchWorkflowFile, workflowToRead, workflowView, type WorkflowFile } from './workflow-state';
 
-if (!validateSnapshot(sample)) throw new Error('site/sample-snapshot.json is not a valid snapshot');
-const snapshot: Snapshot = sample;
+if (!validateProfileData(sample)) throw new Error('site/sample-profile.json is not valid profile data');
 
 function el<T extends Element = HTMLElement>(selector: string): T {
   const found = document.querySelector<T>(selector);
@@ -42,10 +43,13 @@ const controls = el<HTMLFormElement>('#controls');
 const cardList = el('#cards');
 const statList = el<HTMLOListElement>('#stats');
 const preview = el('#preview');
+const previewSource = el('#preview-source');
 
 let setup: SetupConfig = { ...DEFAULT_SETUP, cards: [...DEFAULT_SETUP.cards] };
 let mode: Mode = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 let cardListTheme: string | null = null;
+/** What the preview is drawn from: the sample until a visitor's own public data arrives. */
+let source: { data: ProfileData; visitor: boolean } = { data: sample, visitor: false };
 
 /**
  * Each card gets its own shadow root: card SVGs carry `<style>` blocks with global
@@ -233,7 +237,20 @@ function syncControls(): void {
   renderStatChecks();
 }
 
+/** Says whose data the preview shows; the hint is for visitor data, which lacks private repos. */
+function renderPreviewSource(): void {
+  if (!source.visitor) previewSource.replaceChildren(t('preview.sample'));
+  else {
+    const hint = document.createElement('span');
+    hint.className = 'public-only';
+    hint.textContent = t('preview.publicOnly');
+    previewSource.replaceChildren(...nodes('preview.visitor', { user: strong(source.data.user.login) }), hint);
+  }
+}
+
+/** The cards as the Action would draw them from `source` with the current options. */
 function renderPreview(): void {
+  const snapshot = aggregate(source.data, setup, new Date());
   const cards = renderCards(snapshot, { theme: setup.theme, cards: setup.cards, stats: setup.stats }).filter((c) =>
     c.file.endsWith(`-${mode}.svg`),
   );
@@ -248,7 +265,9 @@ function renderPreview(): void {
       return host;
     }),
   );
+  renderPreviewSource();
 }
+
 
 function renderOutput(): void {
   el('#workflow').textContent = workflowYaml(setup);
@@ -512,6 +531,8 @@ async function lookUp(): Promise<RepoLookup | null> {
   }
   if (username !== user) return null; // a late answer for a name no longer in the box
   lookup = result;
+  // The user exists (with or without a profile repository): preview their own data.
+  if (result.kind === 'found' || result.kind === 'missing') void loadProfile(user);
   if (result.kind === 'found') void loadWorkflowFile(result.owner);
   renderUserStatus();
   renderRepoLinks();
@@ -562,6 +583,51 @@ el('#links-hint-link').addEventListener('click', (e) => {
 });
 
 el<HTMLAnchorElement>('#sign-in').href = signInUrl(location.href);
+
+// --- Preview: the visitor's own public data ---
+
+/** `localStorage`, read per call: merely touching it throws when storage is blocked. */
+const browserStorage = {
+  getItem: (key: string) => localStorage.getItem(key),
+  setItem: (key: string, value: string) => localStorage.setItem(key, value),
+};
+/** Visitor data per lowercased login, for the page's life. Failures aren't kept: the next lookup asks again. */
+const profiles = new Map<string, ProfileData>();
+/** Profile requests in flight per lowercased login, so a name is never asked for twice at once. */
+const profileReads = new Map<string, Promise<ProfileData | null>>();
+
+/** `user`'s public data from memory, the browser's cache or the Worker, in that order. */
+function getProfile(user: string): Promise<ProfileData | null> {
+  const key = user.toLowerCase();
+  const known = profiles.get(key) ?? readCachedProfile(browserStorage, user, Date.now());
+  if (known !== null) {
+    profiles.set(key, known);
+    return Promise.resolve(known);
+  }
+  let pending = profileReads.get(key);
+  if (pending === undefined) {
+    pending = fetchProfile(user, (url, init) => fetch(url, init))
+      .then((data) => {
+        if (data !== null) {
+          profiles.set(key, data);
+          writeCachedProfile(browserStorage, user, data, Date.now());
+        }
+        return data;
+      })
+      .finally(() => profileReads.delete(key));
+    profileReads.set(key, pending);
+  }
+  return pending;
+}
+
+/** Switches the preview to `user`'s data once it arrives, if that name is still in the box; else nothing changes. */
+async function loadProfile(user: string): Promise<void> {
+  const data = await getProfile(user);
+  if (data === null || !acceptProfile(username, user)) return;
+  if (source.data === data) return;
+  source = { data, visitor: true };
+  renderPreview();
+}
 
 // --- Step 2: a workflow that already exists ---
 
@@ -812,6 +878,7 @@ for (const radio of langRadios) {
     // Only words change: the form, the lookup and the check keep their state.
     renderCardChecks();
     renderStatChecks();
+    renderPreviewSource();
     renderUserStatus();
     renderRepoLinks();
     checkView?.();

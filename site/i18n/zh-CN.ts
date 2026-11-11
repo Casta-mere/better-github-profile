@@ -62,7 +62,7 @@ export const zhCN: Messages = {
   'controls.includeForks': '包含复刻仓库',
   'controls.excludeRepos': '排除仓库',
   'controls.excludeLangs': '排除语言',
-  'controls.listNote': '用逗号分隔。预览使用固定的示例数据，因此排除项只会影响工作流。',
+  'controls.listNote': '用逗号分隔。',
   'controls.ping': '使用统计',
   'controls.pingNote': '每次运行发送一次：仓库 ID 的哈希值（假名化，并非匿名）、版本号和主题。关闭后不发送任何数据。',
 
@@ -71,6 +71,9 @@ export const zhCN: Messages = {
   'preview.modeAria': '预览模式',
   'preview.light': '浅色',
   'preview.dark': '深色',
+  'preview.sample': '示例数据',
+  'preview.visitor': '{user} 的公开数据',
+  'preview.publicOnly': '这里无法看到私有仓库，你的实际卡片数字可能更高。',
 
   'linksHint.text': '请先填写{link}：这些步骤中的链接会直接打开你的主页仓库，找到仓库后即可使用。',
   'linksHint.link': '你的 GitHub 用户名',
@@ -159,5 +162,5 @@ export const zhCN: Messages = {
   'step4.replace': '更换主题或卡片也会改变文件名：README 中的代码也需要一并替换。',
   'step4.deprecated': 'GitHub 已弃用 {light} / {dark} 片段，推荐改用 {picture}。它们目前仍然有效，但以后可能失效。',
 
-  footer: '预览使用一份固定的示例快照，渲染代码与 Action 运行的完全相同。',
+  footer: '预览与 Action 使用完全相同的渲染代码。',
 };

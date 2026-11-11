@@ -499,8 +499,17 @@ pre {
   justify-content: center;
   gap: 12px;
   padding: 24px 16px;
-  border-radius: 0 0 6px 6px;
   background: #ffffff;
+}
+
+/* Under the cards: whose data they show. */
+.preview-source {
+  padding: 8px 16px;
+  border-top: 1px solid var(--border);
+}
+
+.preview-source .public-only {
+  display: block;
 }
 
 .preview[data-mode='dark'] {

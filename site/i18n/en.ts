@@ -67,7 +67,7 @@ export const en = {
   'controls.includeForks': 'Include forks',
   'controls.excludeRepos': 'Exclude repos',
   'controls.excludeLangs': 'Exclude languages',
-  'controls.listNote': 'Comma-separated. The preview uses fixed sample data, so exclusions only change the workflow.',
+  'controls.listNote': 'Comma-separated.',
   'controls.ping': 'Usage ping',
   'controls.pingNote':
     'Sends a hash of your repo ID (pseudonymous, not anonymous), the version and the theme, once per run. Turn off to send nothing.',
@@ -77,6 +77,9 @@ export const en = {
   'preview.modeAria': 'Preview mode',
   'preview.light': 'Light',
   'preview.dark': 'Dark',
+  'preview.sample': 'Sample data',
+  'preview.visitor': 'Public data for {user}',
+  'preview.publicOnly': "Private repositories can't be seen here, so your card may show more.",
 
   'linksHint.text':
     '{link} comes first: the links in these steps go straight into your profile repository, so they turn on once it’s found.',
@@ -170,5 +173,5 @@ export const en = {
   'step4.deprecated':
     'GitHub has deprecated the {light} / {dark} fragments in favor of {picture}. They still work, but may stop.',
 
-  footer: 'The preview renders a fixed sample snapshot with the same code the Action runs.',
+  footer: 'The preview renders with the same code the Action runs.',
 } as const;
