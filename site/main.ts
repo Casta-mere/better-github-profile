@@ -26,7 +26,7 @@ import {
 import { nodes, translateElement, translatePage } from './i18n/dom';
 import { detectLang, getLang, setLang, t, toLang, withLang, type Key, type Lang } from './i18n/index';
 import { readLanding, signInUrl, withoutLanding, type AuthOutcome } from './landing';
-import { acceptProfile, fetchProfile, readCachedProfile, writeCachedProfile } from './profile';
+import { acceptProfile, fetchProfile, previewSourceFor, readCachedProfile, writeCachedProfile } from './profile';
 import sample from './sample-profile.json';
 import { applyControl } from './state';
 import { fetchWorkflowFile, workflowToRead, workflowView, type WorkflowFile } from './workflow-state';
@@ -101,7 +101,7 @@ const STAT_LABELS = {
   joined: 'stat.joined',
 } as const satisfies Record<StatKey, Key>;
 
-/** The stat picker's rows, made once and moved around: a moved row keeps its focus and drag. */
+/** The stat picker's rows, made once and moved around, so a drag or the focus inside one survives a redraw. */
 const statRows = new Map<StatKey, HTMLLIElement>();
 
 function moveButton(k: StatKey, by: -1 | 1): HTMLButtonElement {
@@ -169,8 +169,10 @@ function renderStatChecks(): void {
     if (row === undefined) statRows.set(k, (row = statRow(k)));
     return row;
   });
+  const active = document.activeElement;
+  const focused = active instanceof HTMLElement && statList.contains(active) ? active : null;
   // Only when the order changed: moving a row in the DOM would end a drag in progress.
-  if (rows.some((row, i) => statList.children[i] !== row)) statList.append(...rows);
+  if (rows.some((row, i) => statList.children[i] !== row)) placeRows(rows, focused?.closest('li') ?? null);
   const max = THEMES[setup.theme].maxStats;
   const onlyOne = setup.stats.length === 1;
   const full = setup.stats.length >= max;
@@ -191,6 +193,24 @@ function renderStatChecks(): void {
       b.setAttribute('aria-label', b.title);
     }
   }
+  // A control that was just disabled (an arrow at an end, or on an unticked row) hands the focus to its checkbox.
+  if (focused !== null && (document.activeElement !== focused || focused.matches(':disabled'))) {
+    focused.closest('li')?.querySelector('input')?.focus();
+  }
+}
+
+/**
+ * Puts the rows in `rows` order. The row holding the focus stays put and the others move
+ * around it: taking a focused element out of the page drops its focus.
+ */
+function placeRows(rows: HTMLLIElement[], keep: HTMLLIElement | null): void {
+  const at = keep === null ? -1 : rows.indexOf(keep);
+  if (keep === null || at < 0) {
+    statList.append(...rows);
+    return;
+  }
+  for (const row of rows.slice(0, at)) statList.insertBefore(row, keep);
+  for (const row of rows.slice(at + 1)) statList.append(row);
 }
 
 // Drag to reorder the chosen stats: the row follows the pointer and the preview redraws on every move.
@@ -558,6 +578,7 @@ function setUsername(value: string): void {
   if (lookup?.kind === 'found') void loadWorkflowFile(lookup.owner);
   renderUserStatus();
   renderRepoLinks();
+  showKnownProfile();
 }
 
 usernameInput.addEventListener('input', () => {
@@ -596,14 +617,31 @@ const profiles = new Map<string, ProfileData>();
 /** Profile requests in flight per lowercased login, so a name is never asked for twice at once. */
 const profileReads = new Map<string, Promise<ProfileData | null>>();
 
+/** `user`'s public data if it is in memory or the browser's cache; nothing is asked for. */
+function knownProfile(user: string): ProfileData | null {
+  if (!isGitHubUsername(user)) return null;
+  const key = user.toLowerCase();
+  const known = profiles.get(key) ?? readCachedProfile(browserStorage, user, Date.now());
+  if (known !== null) profiles.set(key, known);
+  return known;
+}
+
+/**
+ * Keeps the preview in step with the box: another visitor's data gives way to the one for
+ * this name if it is known, else to the sample until this name's data arrives.
+ */
+function showKnownProfile(): void {
+  const next = previewSourceFor(username, source.visitor ? source.data.user.login : null, knownProfile(username));
+  if (next === 'keep') return;
+  source = next === 'sample' ? { data: sample, visitor: false } : { data: next, visitor: true };
+  renderPreview();
+}
+
 /** `user`'s public data from memory, the browser's cache or the Worker, in that order. */
 function getProfile(user: string): Promise<ProfileData | null> {
   const key = user.toLowerCase();
-  const known = profiles.get(key) ?? readCachedProfile(browserStorage, user, Date.now());
-  if (known !== null) {
-    profiles.set(key, known);
-    return Promise.resolve(known);
-  }
+  const known = knownProfile(user);
+  if (known !== null) return Promise.resolve(known);
   let pending = profileReads.get(key);
   if (pending === undefined) {
     pending = fetchProfile(user, (url, init) => fetch(url, init))

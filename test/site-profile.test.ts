@@ -5,6 +5,7 @@ import {
   fetchProfile,
   PROFILE_CACHE_MS,
   PROFILE_URL,
+  previewSourceFor,
   readCachedProfile,
   writeCachedProfile,
 } from '../site/profile';
@@ -123,5 +124,33 @@ describe('acceptProfile', () => {
   it('takes an answer for the name in the box, whatever its case', () => {
     expect(acceptProfile('Casta-mere', 'casta-mere')).toBe(true);
     expect(acceptProfile('octocat', 'octocat')).toBe(true);
+  });
+});
+
+describe('previewSourceFor', () => {
+  const other: ProfileData = { ...data, user: { ...data.user, login: 'octocat' } };
+
+  it('a visitor shown, the name changed to one not known yet → the sample', () => {
+    expect(previewSourceFor('someone-else', data.user.login, null)).toBe('sample');
+  });
+
+  it('a visitor shown, the box cleared → the sample', () => {
+    expect(previewSourceFor('', data.user.login, null)).toBe('sample');
+  });
+
+  it('the same name in another case or with spaces → keep, no flicker', () => {
+    const login = data.user.login;
+    expect(previewSourceFor(login.toUpperCase(), login, data)).toBe('keep');
+    expect(previewSourceFor(`  ${login.toLowerCase()} `, login, null)).toBe('keep');
+  });
+
+  it('changed to a name whose data is known → that data at once', () => {
+    expect(previewSourceFor('octocat', data.user.login, other)).toBe(other);
+    expect(previewSourceFor('octocat', null, other)).toBe(other);
+  });
+
+  it('the sample shown and nothing known → keep the sample', () => {
+    expect(previewSourceFor('someone-else', null, null)).toBe('keep');
+    expect(previewSourceFor('', null, null)).toBe('keep');
   });
 });

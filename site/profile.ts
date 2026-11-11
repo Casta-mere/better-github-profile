@@ -55,3 +55,19 @@ export function writeCachedProfile(storage: Pick<Storage, 'setItem'>, user: stri
 export function acceptProfile(current: string, requested: string): boolean {
   return current.toLowerCase() === requested.toLowerCase();
 }
+
+/**
+ * What the preview should show once the box holds `username`, given the visitor whose data it
+ * shows (`shownLogin`, null for the sample) and the data already known for `username`.
+ * 'keep' while the shown data is still this name's, e.g. after a case change or a trailing space.
+ */
+export function previewSourceFor(
+  username: string,
+  shownLogin: string | null,
+  known: ProfileData | null,
+): 'keep' | 'sample' | ProfileData {
+  const name = username.trim();
+  if (shownLogin !== null && acceptProfile(name, shownLogin)) return 'keep';
+  if (known !== null) return known;
+  return shownLogin === null ? 'keep' : 'sample';
+}
