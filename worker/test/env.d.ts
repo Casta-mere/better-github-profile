@@ -5,6 +5,7 @@ declare global {
     interface Env {
       DB: D1Database;
       CHECK_LIMIT: RateLimit;
+      PROFILE_LIMIT: RateLimit;
       SITE_URL: string;
       TEST_MIGRATIONS: D1Migration[];
     }

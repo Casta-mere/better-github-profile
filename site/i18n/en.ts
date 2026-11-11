@@ -44,12 +44,30 @@ export const en = {
   'controls.theme': 'Theme',
   'controls.cards': 'Cards',
   'controls.lastCard': 'At least one card stays selected',
+  'controls.stats': 'Stats',
+  'controls.statsNote': 'Tick what to show; drag or use the arrows to reorder.',
+  'controls.lastStat': 'At least one stat stays selected',
+  'controls.statsCap': 'This theme shows up to {max} stats',
+  'controls.moveUp': 'Move up',
+  'controls.moveDown': 'Move down',
+  'stat.stars': 'Stars',
+  'stat.forks': 'Forks',
+  'stat.allTime': 'All-time contributions',
+  'stat.pastYear': 'Contributions (past year)',
+  'stat.repos': 'Repositories',
+  'stat.followers': 'Followers',
+  'stat.commits': 'Commits (past year)',
+  'stat.pullRequests': 'Pull requests (past year)',
+  'stat.issues': 'Issues (past year)',
+  'stat.reviews': 'Reviews (past year)',
+  'stat.private': 'Private contributions',
+  'stat.joined': 'On GitHub since',
   'controls.data': 'Data',
   'controls.includePrivate': 'Include private work',
   'controls.includeForks': 'Include forks',
   'controls.excludeRepos': 'Exclude repos',
   'controls.excludeLangs': 'Exclude languages',
-  'controls.listNote': 'Comma-separated. The preview uses fixed sample data, so exclusions only change the workflow.',
+  'controls.listNote': 'Comma-separated.',
   'controls.ping': 'Usage ping',
   'controls.pingNote':
     'Sends a hash of your repo ID (pseudonymous, not anonymous), the version and the theme, once per run. Turn off to send nothing.',
@@ -59,6 +77,9 @@ export const en = {
   'preview.modeAria': 'Preview mode',
   'preview.light': 'Light',
   'preview.dark': 'Dark',
+  'preview.sample': 'Sample data',
+  'preview.visitor': 'Public data for {user}',
+  'preview.publicOnly': "Private repositories can't be seen here, so your card may show more.",
 
   'linksHint.text':
     '{link} comes first: the links in these steps go straight into your profile repository, so they turn on once it’s found.',
@@ -152,5 +173,5 @@ export const en = {
   'step4.deprecated':
     'GitHub has deprecated the {light} / {dark} fragments in favor of {picture}. They still work, but may stop.',
 
-  footer: 'The preview renders a fixed sample snapshot with the same code the Action runs.',
+  footer: 'The preview renders with the same code the Action runs.',
 } as const;

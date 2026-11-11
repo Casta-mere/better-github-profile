@@ -79,6 +79,7 @@ Run it once from the Actions tab, or wait for the daily run. It commits the card
 | `token` | *required* | Classic personal access token with `read:user`, plus `repo` to include private work. Pass `${{ secrets.STATS_TOKEN }}`. |
 | `theme` | `native` | `native` or `strip`. |
 | `cards` | — | Comma-separated cards to render: `overview` and `languages` for `native`, `strip` for `strip`. Empty renders all of the theme's cards. |
+| `stats` | — | Comma-separated stats, in display order, e.g. `stars,followers,allTime`. Keys: `stars`, `forks`, `allTime`, `pastYear`, `repos`, `followers`, `commits`, `pullRequests`, `issues`, `reviews`, `private`, `joined`. Empty uses the theme's default: `stars,forks,allTime,pastYear,repos` for `native`, `allTime,pastYear,repos,stars,followers` for `strip`. `strip` shows at most 6. |
 | `exclude_repos` | — | Comma-separated repository names to leave out, case-insensitive. |
 | `exclude_langs` | — | Comma-separated languages to leave out, case-insensitive. |
 | `include_forks` | `false` | Count forked repositories. |

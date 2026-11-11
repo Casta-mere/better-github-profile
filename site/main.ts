@@ -1,5 +1,6 @@
-import { renderCards, THEMES } from '../src/render/index';
-import { validateSnapshot, type Mode, type Snapshot } from '../src/snapshot/types';
+import { renderCards, STAT_KEYS, THEMES, type StatKey } from '../src/render/index';
+import { aggregate, validateProfileData, type ProfileData } from '../src/collect/profile';
+import type { Mode } from '../src/snapshot/types';
 import {
   DEFAULT_SETUP,
   isGitHubUsername,
@@ -25,12 +26,12 @@ import {
 import { nodes, translateElement, translatePage } from './i18n/dom';
 import { detectLang, getLang, setLang, t, toLang, withLang, type Key, type Lang } from './i18n/index';
 import { readLanding, signInUrl, withoutLanding, type AuthOutcome } from './landing';
-import sample from './sample-snapshot.json';
+import { acceptProfile, fetchProfile, previewSourceFor, readCachedProfile, writeCachedProfile } from './profile';
+import sample from './sample-profile.json';
 import { applyControl } from './state';
 import { fetchWorkflowFile, workflowToRead, workflowView, type WorkflowFile } from './workflow-state';
 
-if (!validateSnapshot(sample)) throw new Error('site/sample-snapshot.json is not a valid snapshot');
-const snapshot: Snapshot = sample;
+if (!validateProfileData(sample)) throw new Error('site/sample-profile.json is not valid profile data');
 
 function el<T extends Element = HTMLElement>(selector: string): T {
   const found = document.querySelector<T>(selector);
@@ -40,11 +41,15 @@ function el<T extends Element = HTMLElement>(selector: string): T {
 
 const controls = el<HTMLFormElement>('#controls');
 const cardList = el('#cards');
+const statList = el<HTMLOListElement>('#stats');
 const preview = el('#preview');
+const previewSource = el('#preview-source');
 
 let setup: SetupConfig = { ...DEFAULT_SETUP, cards: [...DEFAULT_SETUP.cards] };
 let mode: Mode = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 let cardListTheme: string | null = null;
+/** What the preview is drawn from: the sample until a visitor's own public data arrives. */
+let source: { data: ProfileData; visitor: boolean } = { data: sample, visitor: false };
 
 /**
  * Each card gets its own shadow root: card SVGs carry `<style>` blocks with global
@@ -80,6 +85,164 @@ function renderCardChecks(): void {
   }
 }
 
+/** Each stat's name on the page. Written out, so test/site-i18n.test.ts sees every key in use. */
+const STAT_LABELS = {
+  stars: 'stat.stars',
+  forks: 'stat.forks',
+  allTime: 'stat.allTime',
+  pastYear: 'stat.pastYear',
+  repos: 'stat.repos',
+  followers: 'stat.followers',
+  commits: 'stat.commits',
+  pullRequests: 'stat.pullRequests',
+  issues: 'stat.issues',
+  reviews: 'stat.reviews',
+  private: 'stat.private',
+  joined: 'stat.joined',
+} as const satisfies Record<StatKey, Key>;
+
+/** The stat picker's rows, made once and moved around, so a drag or the focus inside one survives a redraw. */
+const statRows = new Map<StatKey, HTMLLIElement>();
+
+function moveButton(k: StatKey, by: -1 | 1): HTMLButtonElement {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'move';
+  b.dataset.move = String(by);
+  b.setAttribute('aria-describedby', `stat-name-${k}`);
+  b.textContent = by < 0 ? '↑' : '↓';
+  b.addEventListener('click', () => moveStat(k, by));
+  return b;
+}
+
+function statRow(k: StatKey): HTMLLIElement {
+  const li = document.createElement('li');
+  li.className = 'stat';
+  li.dataset.stat = k;
+  const grip = document.createElement('span');
+  grip.className = 'grip';
+  grip.setAttribute('aria-hidden', 'true');
+  const label = document.createElement('label');
+  const input = document.createElement('input');
+  input.type = 'checkbox';
+  input.name = `stat-${k}`;
+  input.addEventListener('change', () => {
+    const stats = input.checked ? [...setup.stats, k] : setup.stats.filter((x) => x !== k);
+    setStats(stats);
+  });
+  const name = document.createElement('span');
+  name.id = `stat-name-${k}`;
+  label.append(input, name);
+  li.append(grip, label, moveButton(k, -1), moveButton(k, 1));
+  return li;
+}
+
+/** Takes the chosen stats, in card order; the reducer keeps the old list if this one can't be shown. */
+function setStats(stats: StatKey[]): void {
+  setup = applyControl(setup, 'stats', stats.join(','));
+  render();
+}
+
+/** Moves a chosen stat one place up or down among the chosen ones, keeping the focus on its arrow. */
+function moveStat(k: StatKey, by: -1 | 1): void {
+  const i = setup.stats.indexOf(k);
+  const j = i + by;
+  if (i < 0 || j < 0 || j >= setup.stats.length) return;
+  const stats = [...setup.stats];
+  [stats[i], stats[j]] = [stats[j]!, stats[i]!];
+  setStats(stats);
+  const row = statRows.get(k)!;
+  const same = row.querySelector<HTMLButtonElement>(`button[data-move="${by}"]`)!;
+  const other = row.querySelector<HTMLButtonElement>(`button[data-move="${-by}"]`)!;
+  (same.disabled ? other : same).focus();
+}
+
+/**
+ * The stat picker: chosen stats first, in card order, then the rest in their usual order.
+ * The last chosen stat can't be unticked; at the theme's cap the others can't be ticked.
+ * Only chosen rows move (by arrow or drag): the others have no place on the card.
+ */
+function renderStatChecks(): void {
+  const order = [...setup.stats, ...STAT_KEYS.filter((k) => !setup.stats.includes(k))];
+  const rows = order.map((k) => {
+    let row = statRows.get(k);
+    if (row === undefined) statRows.set(k, (row = statRow(k)));
+    return row;
+  });
+  const active = document.activeElement;
+  const focused = active instanceof HTMLElement && statList.contains(active) ? active : null;
+  // Only when the order changed: moving a row in the DOM would end a drag in progress.
+  if (rows.some((row, i) => statList.children[i] !== row)) placeRows(rows, focused?.closest('li') ?? null);
+  const max = THEMES[setup.theme].maxStats;
+  const onlyOne = setup.stats.length === 1;
+  const full = setup.stats.length >= max;
+  for (const [i, k] of order.entries()) {
+    const row = rows[i]!;
+    const on = i < setup.stats.length;
+    const input = row.querySelector('input')!;
+    input.checked = on;
+    input.disabled = on ? onlyOne : full;
+    row.querySelector('label')!.title = !input.disabled ? '' : on ? t('controls.lastStat') : t('controls.statsCap', { max });
+    row.querySelector('label span')!.textContent = t(STAT_LABELS[k]);
+    row.classList.toggle('off', !on);
+    row.draggable = on && !onlyOne;
+    for (const b of row.querySelectorAll<HTMLButtonElement>('button[data-move]')) {
+      const up = b.dataset.move === '-1';
+      b.disabled = !on || (up ? i === 0 : i === setup.stats.length - 1);
+      b.title = t(up ? 'controls.moveUp' : 'controls.moveDown');
+      b.setAttribute('aria-label', b.title);
+    }
+  }
+  // A control that was just disabled (an arrow at an end, or on an unticked row) hands the focus to its checkbox.
+  if (focused !== null && (document.activeElement !== focused || focused.matches(':disabled'))) {
+    focused.closest('li')?.querySelector('input')?.focus();
+  }
+}
+
+/**
+ * Puts the rows in `rows` order. The row holding the focus stays put and the others move
+ * around it: taking a focused element out of the page drops its focus.
+ */
+function placeRows(rows: HTMLLIElement[], keep: HTMLLIElement | null): void {
+  const at = keep === null ? -1 : rows.indexOf(keep);
+  if (keep === null || at < 0) {
+    statList.append(...rows);
+    return;
+  }
+  for (const row of rows.slice(0, at)) statList.insertBefore(row, keep);
+  for (const row of rows.slice(at + 1)) statList.append(row);
+}
+
+// Drag to reorder the chosen stats: the row follows the pointer and the preview redraws on every move.
+let dragged: HTMLLIElement | null = null;
+statList.addEventListener('dragstart', (e) => {
+  if (!(e.target instanceof HTMLLIElement) || !e.target.draggable) return;
+  dragged = e.target;
+  dragged.classList.add('dragging');
+  if (e.dataTransfer) {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', dragged.dataset.stat ?? '');
+  }
+});
+statList.addEventListener('dragover', (e) => {
+  if (dragged === null || !(e.target instanceof Element)) return;
+  const over = e.target.closest<HTMLLIElement>('li[data-stat]');
+  // Chosen rows only: an unticked row has no place on the card to move to.
+  if (over === null || over.classList.contains('off')) return;
+  e.preventDefault();
+  if (over === dragged) return;
+  const box = over.getBoundingClientRect();
+  const before = e.clientY < box.top + box.height / 2 ? over : over.nextElementSibling;
+  if (before === dragged || before === dragged.nextElementSibling) return;
+  statList.insertBefore(dragged, before);
+  setStats([...statList.querySelectorAll<HTMLLIElement>('li.stat:not(.off)')].map((li) => li.dataset.stat as StatKey));
+});
+statList.addEventListener('drop', (e) => e.preventDefault());
+statList.addEventListener('dragend', () => {
+  dragged?.classList.remove('dragging');
+  dragged = null;
+});
+
 function syncControls(): void {
   // Not only the form: the README format toggle sits in step 4's header.
   for (const input of document.querySelectorAll<HTMLInputElement>('input[data-control]')) {
@@ -91,10 +254,24 @@ function syncControls(): void {
     }
   }
   renderCardChecks();
+  renderStatChecks();
 }
 
+/** Says whose data the preview shows; the hint is for visitor data, which lacks private repos. */
+function renderPreviewSource(): void {
+  if (!source.visitor) previewSource.replaceChildren(t('preview.sample'));
+  else {
+    const hint = document.createElement('span');
+    hint.className = 'public-only';
+    hint.textContent = t('preview.publicOnly');
+    previewSource.replaceChildren(...nodes('preview.visitor', { user: strong(source.data.user.login) }), hint);
+  }
+}
+
+/** The cards as the Action would draw them from `source` with the current options. */
 function renderPreview(): void {
-  const cards = renderCards(snapshot, { theme: setup.theme, cards: setup.cards }).filter((c) =>
+  const snapshot = aggregate(source.data, setup, new Date());
+  const cards = renderCards(snapshot, { theme: setup.theme, cards: setup.cards, stats: setup.stats }).filter((c) =>
     c.file.endsWith(`-${mode}.svg`),
   );
   preview.dataset.mode = mode;
@@ -108,7 +285,9 @@ function renderPreview(): void {
       return host;
     }),
   );
+  renderPreviewSource();
 }
+
 
 function renderOutput(): void {
   el('#workflow').textContent = workflowYaml(setup);
@@ -372,6 +551,8 @@ async function lookUp(): Promise<RepoLookup | null> {
   }
   if (username !== user) return null; // a late answer for a name no longer in the box
   lookup = result;
+  // The user exists (with or without a profile repository): preview their own data.
+  if (result.kind === 'found' || result.kind === 'missing') void loadProfile(user);
   if (result.kind === 'found') void loadWorkflowFile(result.owner);
   renderUserStatus();
   renderRepoLinks();
@@ -397,6 +578,7 @@ function setUsername(value: string): void {
   if (lookup?.kind === 'found') void loadWorkflowFile(lookup.owner);
   renderUserStatus();
   renderRepoLinks();
+  showKnownProfile();
 }
 
 usernameInput.addEventListener('input', () => {
@@ -422,6 +604,68 @@ el('#links-hint-link').addEventListener('click', (e) => {
 });
 
 el<HTMLAnchorElement>('#sign-in').href = signInUrl(location.href);
+
+// --- Preview: the visitor's own public data ---
+
+/** `localStorage`, read per call: merely touching it throws when storage is blocked. */
+const browserStorage = {
+  getItem: (key: string) => localStorage.getItem(key),
+  setItem: (key: string, value: string) => localStorage.setItem(key, value),
+};
+/** Visitor data per lowercased login, for the page's life. Failures aren't kept: the next lookup asks again. */
+const profiles = new Map<string, ProfileData>();
+/** Profile requests in flight per lowercased login, so a name is never asked for twice at once. */
+const profileReads = new Map<string, Promise<ProfileData | null>>();
+
+/** `user`'s public data if it is in memory or the browser's cache; nothing is asked for. */
+function knownProfile(user: string): ProfileData | null {
+  if (!isGitHubUsername(user)) return null;
+  const key = user.toLowerCase();
+  const known = profiles.get(key) ?? readCachedProfile(browserStorage, user, Date.now());
+  if (known !== null) profiles.set(key, known);
+  return known;
+}
+
+/**
+ * Keeps the preview in step with the box: another visitor's data gives way to the one for
+ * this name if it is known, else to the sample until this name's data arrives.
+ */
+function showKnownProfile(): void {
+  const next = previewSourceFor(username, source.visitor ? source.data.user.login : null, knownProfile(username));
+  if (next === 'keep') return;
+  source = next === 'sample' ? { data: sample, visitor: false } : { data: next, visitor: true };
+  renderPreview();
+}
+
+/** `user`'s public data from memory, the browser's cache or the Worker, in that order. */
+function getProfile(user: string): Promise<ProfileData | null> {
+  const key = user.toLowerCase();
+  const known = knownProfile(user);
+  if (known !== null) return Promise.resolve(known);
+  let pending = profileReads.get(key);
+  if (pending === undefined) {
+    pending = fetchProfile(user, (url, init) => fetch(url, init))
+      .then((data) => {
+        if (data !== null) {
+          profiles.set(key, data);
+          writeCachedProfile(browserStorage, user, data, Date.now());
+        }
+        return data;
+      })
+      .finally(() => profileReads.delete(key));
+    profileReads.set(key, pending);
+  }
+  return pending;
+}
+
+/** Switches the preview to `user`'s data once it arrives, if that name is still in the box; else nothing changes. */
+async function loadProfile(user: string): Promise<void> {
+  const data = await getProfile(user);
+  if (data === null || !acceptProfile(username, user)) return;
+  if (source.data === data) return;
+  source = { data, visitor: true };
+  renderPreview();
+}
 
 // --- Step 2: a workflow that already exists ---
 
@@ -671,6 +915,8 @@ for (const radio of langRadios) {
     if (search !== location.search) history.replaceState(history.state, '', `${location.pathname}${search}${location.hash}`);
     // Only words change: the form, the lookup and the check keep their state.
     renderCardChecks();
+    renderStatChecks();
+    renderPreviewSource();
     renderUserStatus();
     renderRepoLinks();
     checkView?.();

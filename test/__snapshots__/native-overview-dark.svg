@@ -22,7 +22,7 @@ text{font-family:-apple-system,"Segoe UI",Helvetica,Arial,sans-serif}
 <text class="v" x="309" y="88" text-anchor="end">5</text>
 <path class="ic" transform="translate(21 100.5) scale(0.75)" d="M10.75 8a2.75 2.75 0 1 1-5.5 0 2.75 2.75 0 1 1 5.5 0M1.25 8h4M10.75 8h4"/>
 <text class="l" x="39" y="111">All-time contributions</text>
-<text class="v" x="309" y="111" text-anchor="end">2,383</text>
+<text class="v" x="309" y="111" text-anchor="end">2.4k</text>
 <path class="ic" transform="translate(21 123.5) scale(0.75)" d="M14.25 8a6.25 6.25 0 1 1-12.5 0 6.25 6.25 0 1 1 12.5 0M8 4.5V8l2.25 1.5"/>
 <text class="l" x="39" y="134">Contributions (past year)</text>
 <text class="v" x="309" y="134" text-anchor="end">795</text>

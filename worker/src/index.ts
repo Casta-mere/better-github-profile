@@ -6,21 +6,25 @@
  * and only ever report counts of distinct ids, never hits.
  *
  * It also serves `GET /gh/<path>`, the selector page's read-only GitHub proxy (./proxy.ts),
+ * `GET /profile/<login>`, a user's public data for the page's live preview (./profile.ts),
  * and `GET /auth/start` + `GET /auth/callback`, the page's "Sign in with GitHub" (./auth.ts):
  * it sends back only the login and revokes the token, which never leaves the Worker.
  */
 
 import { auth } from './auth';
+import { profile } from './profile';
 import { proxy, type Deps } from './proxy';
 
 export type { Deps } from './proxy';
 
 export interface Env {
   DB: D1Database;
-  /** The owner's GitHub token for /gh: a secret (`wrangler secret put GITHUB_TOKEN`). Unset, /gh answers 503. */
+  /** The owner's no-permission GitHub token for /gh and /profile: a secret (`wrangler secret put GITHUB_TOKEN`). Unset, both answer 503. */
   GITHUB_TOKEN?: string;
   /** The per-IP limit for /gh (`[[ratelimits]]` in wrangler.toml); skipped when absent. */
   CHECK_LIMIT?: RateLimit;
+  /** The per-IP limit for /profile (`[[ratelimits]]` in wrangler.toml); skipped when absent. */
+  PROFILE_LIMIT?: RateLimit;
   /** The selector page, where /auth sends the browser back to: a `[vars]` entry in wrangler.toml. */
   SITE_URL?: string;
   /** The OAuth App for /auth: secrets (`wrangler secret put`). Either one unset, sign-in is "unavailable". */
@@ -65,6 +69,9 @@ export async function handle(request: Request, env: Env, now: Date, deps: Deps =
   const { pathname } = new URL(request.url);
   if (pathname.startsWith('/gh/')) {
     return proxy(request, env, deps);
+  }
+  if (pathname.startsWith('/profile/')) {
+    return profile(request, env, deps);
   }
   if (pathname.startsWith('/auth/')) {
     return auth(request, env, deps);

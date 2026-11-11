@@ -1,6 +1,8 @@
-import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { applyControl } from '../site/state';
+import sample from '../site/sample-profile.json';
+import { aggregate, validateProfileData, type ProfileData } from '../src/collect/profile';
+import { validateSnapshot } from '../src/snapshot/types';
 import { DEFAULT_SETUP } from '../src/snippets/index';
 
 describe('applyControl', () => {
@@ -74,7 +76,35 @@ describe('applyControl', () => {
     applyControl(DEFAULT_SETUP, 'theme', 'strip');
     applyControl(DEFAULT_SETUP, 'excludeRepos', 'x');
     applyControl(DEFAULT_SETUP, 'readmeFormat', 'markdown');
+    applyControl(DEFAULT_SETUP, 'stats', 'joined');
     expect(DEFAULT_SETUP).toEqual(before);
+  });
+
+  it('stats sets an ordered list', () => {
+    expect(applyControl(DEFAULT_SETUP, 'stats', 'joined,stars').stats).toEqual(['joined', 'stars']);
+  });
+
+  it('stats drops unknown keys and duplicates', () => {
+    expect(applyControl(DEFAULT_SETUP, 'stats', 'joined,Stars,nope,joined, forks').stats).toEqual(['joined', 'forks']);
+  });
+
+  it('stats left empty keeps the setup unchanged', () => {
+    expect(applyControl(DEFAULT_SETUP, 'stats', '')).toBe(DEFAULT_SETUP);
+    expect(applyControl(DEFAULT_SETUP, 'stats', 'nope')).toBe(DEFAULT_SETUP);
+  });
+
+  it('stats over the theme cap keeps the setup unchanged', () => {
+    const strip = applyControl(DEFAULT_SETUP, 'theme', 'strip');
+    const seven = 'stars,forks,allTime,pastYear,repos,followers,commits';
+    expect(applyControl(strip, 'stats', seven)).toBe(strip);
+    expect(applyControl(strip, 'stats', 'stars,forks,allTime,pastYear,repos,followers').stats).toHaveLength(6);
+    expect(applyControl(DEFAULT_SETUP, 'stats', seven).stats).toHaveLength(7); // native has no such cap
+  });
+
+  it('theme switch resets stats to the theme default', () => {
+    const many = applyControl(DEFAULT_SETUP, 'stats', 'stars,forks,allTime,pastYear,repos,followers,commits,joined');
+    expect(applyControl(many, 'theme', 'strip').stats).toEqual(['allTime', 'pastYear', 'repos', 'stars', 'followers']);
+    expect(applyControl(many, 'theme', 'native').stats).toEqual(['stars', 'forks', 'allTime', 'pastYear', 'repos']);
   });
 
   it('rejects an unknown control or a value of the wrong type', () => {
@@ -84,10 +114,18 @@ describe('applyControl', () => {
   });
 });
 
-describe('site/sample-snapshot.json', () => {
-  it('is a byte-for-byte copy of test/fixtures/snapshot-casta-mere.json', () => {
-    const site = readFileSync(new URL('../site/sample-snapshot.json', import.meta.url));
-    const fixture = readFileSync(new URL('./fixtures/snapshot-casta-mere.json', import.meta.url));
-    expect(site.equals(fixture)).toBe(true);
+describe('site/sample-profile.json', () => {
+  it('is valid profile data', () => {
+    expect(validateProfileData(sample)).toBe(true);
+  });
+
+  it('names no private repository: they are private-1, private-2, …', () => {
+    const hidden = sample.repos.filter((r) => r.isPrivate);
+    expect(hidden.length).toBeGreaterThan(0);
+    for (const r of hidden) expect(r.name).toMatch(/^private-\d+$/);
+  });
+
+  it('aggregates into a valid snapshot', () => {
+    expect(validateSnapshot(aggregate(sample as ProfileData, DEFAULT_SETUP, new Date('2026-11-11T00:00:00Z')))).toBe(true);
   });
 });

@@ -15,6 +15,9 @@ inputs:
   cards:
     description: Comma-separated cards of the theme to render. Empty renders all of them.
     default: ''
+  stats:
+    description: 'Comma-separated stats, in display order (e.g. stars,followers,allTime). Empty uses the theme''s default. Keys: stars, forks, allTime, pastYear, repos, followers, commits, pullRequests, issues, reviews, private, joined.'
+    default: ''
   exclude_repos:
     description: Comma-separated repository names to leave out (case-insensitive).
     default: ''

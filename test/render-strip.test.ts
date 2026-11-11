@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { renderCards, THEMES } from '../src/render/index';
+import { fmtCompact, renderCards, THEMES } from '../src/render/index';
 import { topLanguages } from '../src/render/languages';
 import type { Snapshot } from '../src/snapshot/types';
 import castaJson from './fixtures/snapshot-casta-mere.json';
@@ -15,7 +15,7 @@ describe('theme strip', () => {
 
   it('pill row in order', () => {
     const line = texts(THEMES.strip.render('strip', casta, { mode: 'light' })).join(' ');
-    const order = ['2,383', 'contributions', '795', 'past year', '59', 'repos', '★', '21', '22', 'followers'].map((t) =>
+    const order = ['2.4k', 'contributions', '795', 'past year', '59', 'repos', '★', '21', '22', 'followers'].map((t) =>
       line.indexOf(t),
     );
     expect(order.every((v, i) => v >= 0 && (i === 0 || v > order[i - 1]))).toBe(true);
@@ -23,7 +23,7 @@ describe('theme strip', () => {
 
   it('pill sections pair each number with its label', () => {
     const t = texts(THEMES.strip.render('strip', casta, { mode: 'light' }));
-    expect(t.slice(0, 5)).toEqual(['2,383 contributions', '795 past year', '59 repos', '★ 21', '22 followers']);
+    expect(t.slice(0, 5)).toEqual(['2.4k contributions', '795 past year', '59 repos', '★ 21', '22 followers']);
   });
 
   it('line 2: 52 wks, sparkline, langs, bar, top 3 languages', () => {
@@ -82,6 +82,71 @@ describe('theme strip', () => {
     expect(() => renderCards(casta, { theme: 'strip', cards: ['overview'] })).toThrow(
       'Unknown card "overview" for theme "strip"; available: strip',
     ));
+
+  it('pill shows the chosen stats, in order', () => {
+    const t = texts(THEMES.strip.render('strip', casta, { mode: 'light', stats: ['reviews', 'stars'] }));
+    expect(t.slice(0, 2)).toEqual([`${casta.contributions.reviews} reviews`, '★ 21']);
+    expect(t[2]).toBe('52 wks');
+  });
+
+  it('pill labels for every stat', () => {
+    const t = texts(
+      THEMES.strip.render('strip', casta, { mode: 'light', stats: ['forks', 'commits', 'pullRequests', 'issues', 'private', 'joined'] }),
+    );
+    const c = casta.contributions;
+    expect(t.slice(0, 6)).toEqual([
+      '5 forks',
+      `${fmtCompact(c.commits)} commits`,
+      `${fmtCompact(c.pullRequests)} PRs`,
+      `${fmtCompact(c.issues)} issues`,
+      `${fmtCompact(c.private)} private`,
+      'since 2021',
+    ]);
+  });
+
+  it('six of the widest stats with large numbers fit in the 820px card', () => {
+    const n = 99999;
+    const big: Snapshot = {
+      ...casta,
+      user: { ...casta.user, followers: n, createdYear: n },
+      repos: { ...casta.repos, count: n, stars: n, forks: n },
+      contributions: { allTime: n, pastYear: n, commits: n, pullRequests: n, issues: n, reviews: n, private: n },
+    };
+    const stats = ['allTime', 'pastYear', 'followers', 'commits', 'reviews', 'private'] as const;
+    expect(stats).toHaveLength(THEMES.strip.maxStats);
+    for (const mode of MODES) {
+      const svg = THEMES.strip.render('strip', big, { mode, stats: [...stats] });
+      const pill = svg.match(/<rect x="0.5" y="[\d.]+" width="([\d.]+)"/)!;
+      expect(Number(pill[1])).toBeLessThanOrEqual(819);
+      expect(texts(svg).slice(0, 6).every((x) => x.startsWith('100k '))).toBe(true);
+      expect(svg).not.toContain('transform');
+    }
+  });
+
+  it.each([
+    [999_999_999, '1B'],
+    [123_456, '123.5k'],
+  ])('six of the widest stats at %i print compact and fit the 820px card', (n, value) => {
+    const big: Snapshot = {
+      ...casta,
+      user: { ...casta.user, followers: n },
+      contributions: { allTime: n, pastYear: n, commits: n, pullRequests: n, issues: n, reviews: n, private: n },
+    };
+    const stats = ['allTime', 'pastYear', 'followers', 'commits', 'reviews', 'private'] as const;
+    for (const mode of MODES) {
+      const svg = THEMES.strip.render('strip', big, { mode, stats: [...stats] });
+      const width = Number(svg.match(/<rect x="0.5" y="[\d.]+" width="([\d.]+)"/)![1]);
+      expect(width).toBeLessThanOrEqual(819);
+      expect(svg).not.toContain('transform');
+      const labels = ['contributions', 'past year', 'followers', 'commits', 'reviews', 'private'];
+      expect(texts(svg).slice(0, 6)).toEqual(labels.map((l) => `${value} ${l}`));
+    }
+  });
+
+  it('the default stats render the same as no stats', () => {
+    const svg = THEMES.strip.render('strip', casta, { mode: 'dark' });
+    expect(THEMES.strip.render('strip', casta, { mode: 'dark', stats: [...THEMES.strip.defaultStats] })).toBe(svg);
+  });
 
   it('matches file snapshots', async () => {
     for (const c of renderCards(casta, { theme: 'strip' })) await expect(c.svg).toMatchFileSnapshot(`__snapshots__/${c.file}`);

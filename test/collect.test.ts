@@ -31,11 +31,11 @@ const viewer = userJson.data.viewer;
 const PAST_YEAR = viewer.contributionsCollection.contributionCalendar.totalContributions;
 const PAST_YEAR_RESTRICTED = viewer.contributionsCollection.restrictedContributionsCount;
 
-/** Repo nodes don't carry `isFork`, so the fake server knows the fixture's one fork by name. */
-const FORKS = new Set(['upstream-fork']);
 /** The most-starred repo in the fixtures (50★), and private. */
 const PRIVATE_TOP = 'stealth-startup';
 const allNodes = [...page1.data.viewer.repositories.nodes, ...page2.data.viewer.repositories.nodes];
+/** The fixture's one fork, `upstream-fork`. */
+const FORKS = new Set(allNodes.filter((n) => n.isFork).map((n) => n.name));
 const ownNodes = allNodes.filter((n) => !FORKS.has(n.name));
 const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
 

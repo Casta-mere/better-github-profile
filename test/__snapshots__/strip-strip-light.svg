@@ -6,16 +6,16 @@ text{font-family:-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;font-size:1
 .m{fill:#59636e}
 .wk{fill:#30a14e;opacity:.6}
 </style>
-<rect x="0.5" y="8.5" width="471.16" height="29" rx="14.5" fill="none" stroke="#d1d9e0"/>
-<path d="M134.52 9v28" stroke="#d1d9e0"/>
-<path d="M239.28 9v28" stroke="#d1d9e0"/>
-<path d="M317.5 9v28" stroke="#d1d9e0"/>
-<path d="M375.76 9v28" stroke="#d1d9e0"/>
-<text x="15" y="27.5"><tspan class="n">2,383</tspan> <tspan class="m" dx="1.6">contributions</tspan></text>
-<text x="149.02" y="27.5"><tspan class="n">795</tspan> <tspan class="m" dx="1.6">past year</tspan></text>
-<text x="253.78" y="27.5"><tspan class="n">59</tspan> <tspan class="m" dx="1.6">repos</tspan></text>
-<text x="332" y="27.5">★ <tspan class="n">21</tspan></text>
-<text x="390.26" y="27.5"><tspan class="n">22</tspan> <tspan class="m" dx="1.6">followers</tspan></text>
+<rect x="0.5" y="8.5" width="464.16" height="29" rx="14.5" fill="none" stroke="#d1d9e0"/>
+<path d="M127.51 9v28" stroke="#d1d9e0"/>
+<path d="M232.28 9v28" stroke="#d1d9e0"/>
+<path d="M310.5 9v28" stroke="#d1d9e0"/>
+<path d="M368.76 9v28" stroke="#d1d9e0"/>
+<text x="15" y="27.5"><tspan class="n">2.4k</tspan> <tspan class="m" dx="1.6">contributions</tspan></text>
+<text x="142.01" y="27.5"><tspan class="n">795</tspan> <tspan class="m" dx="1.6">past year</tspan></text>
+<text x="246.78" y="27.5"><tspan class="n">59</tspan> <tspan class="m" dx="1.6">repos</tspan></text>
+<text x="325" y="27.5">★ <tspan class="n">21</tspan></text>
+<text x="383.26" y="27.5"><tspan class="n">22</tspan> <tspan class="m" dx="1.6">followers</tspan></text>
 <text class="m" x="0" y="63.5">52 wks</text>
 <rect class="wk" x="50.09" y="67" width="2.04" height="1"/>
 <rect class="wk" x="53.13" y="63.74" width="2.04" height="4.26"/>

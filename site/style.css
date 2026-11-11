@@ -328,6 +328,92 @@ pre {
   color: var(--fg-muted);
 }
 
+/* Stat picker */
+
+.stats {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 4px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+}
+
+.stat[draggable='true'] {
+  cursor: grab;
+}
+
+.stat:hover {
+  border-color: var(--border-muted);
+  background: var(--canvas-subtle);
+}
+
+.stat.dragging {
+  opacity: 0.6;
+  border-color: var(--accent);
+}
+
+.stat .grip {
+  width: 10px;
+  color: var(--fg-muted);
+  font-size: 11px;
+  letter-spacing: -2px;
+  user-select: none;
+}
+
+.stat[draggable='true'] .grip::before {
+  content: '⋮⋮';
+}
+
+.stat label {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.stat input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.stat.off label span {
+  color: var(--fg-muted);
+}
+
+.stat .move {
+  padding: 0 4px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--fg-muted);
+  font-size: 12px;
+  line-height: 20px;
+  cursor: pointer;
+}
+
+.stat .move:hover:not(:disabled) {
+  color: var(--fg);
+  background: var(--control-hover);
+}
+
+.stat .move:disabled {
+  visibility: hidden;
+}
+
 /* Switches */
 
 .switch {
@@ -413,8 +499,17 @@ pre {
   justify-content: center;
   gap: 12px;
   padding: 24px 16px;
-  border-radius: 0 0 6px 6px;
   background: #ffffff;
+}
+
+/* Under the cards: whose data they show. */
+.preview-source {
+  padding: 8px 16px;
+  border-top: 1px solid var(--border);
+}
+
+.preview-source .public-only {
+  display: block;
 }
 
 .preview[data-mode='dark'] {

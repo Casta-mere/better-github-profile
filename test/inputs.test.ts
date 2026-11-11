@@ -61,6 +61,29 @@ describe('readInputs', () => {
     );
   });
 
+  it('reads stats in order, trimmed; empty means the theme default', () => {
+    expect(readInputs(inputs({ token: 't', stats: ' allTime , stars ' })).stats).toEqual(['allTime', 'stars']);
+    expect(readInputs(inputs({ token: 't', stats: '' })).stats).toBeUndefined();
+    expect(readInputs(inputs({ token: 't', stats: ' , ' })).stats).toBeUndefined();
+    expect(readInputs(inputs({ token: 't' })).stats).toBeUndefined();
+  });
+
+  it('stats keys are exact after trimming', () => {
+    expect(() => readInputs(inputs({ token: 't', stats: 'Stars, forks' }))).toThrow(/Unknown stat "Stars"/);
+    expect(() => readInputs(inputs({ token: 't', stats: 'Stars, forks' }))).toThrow('available: stars, forks, allTime');
+    expect(readInputs(inputs({ token: 't', stats: 'stars, forks' })).stats).toEqual(['stars', 'forks']);
+  });
+
+  it('a stat listed twice throws', () => {
+    expect(() => readInputs(inputs({ token: 't', stats: 'stars,repos,stars' }))).toThrow('Stat "stars" is listed twice');
+  });
+
+  it('stats over the theme cap throw', () => {
+    const seven = 'stars,forks,allTime,pastYear,repos,followers,commits';
+    expect(() => readInputs(inputs({ token: 't', theme: 'strip', stats: seven }))).toThrow(/at most 6/);
+    expect(readInputs(inputs({ token: 't', stats: seven })).stats).toHaveLength(7);
+  });
+
   it('a boolean that is not true/false throws', () => {
     expect(() => readInputs(inputs({ token: 't', include_private: 'yes please' }))).toThrow('include_private');
   });

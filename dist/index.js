@@ -20462,6 +20462,63 @@ function describe(err) {
   return `${err.message}${cause}`;
 }
 
+// src/collect/profile.ts
+var TOP_REPOS = 6;
+function aggregate(p, o, now) {
+  const excluded = lowerSet(o.excludeRepos);
+  const repos = p.repos.filter(
+    (r) => (o.includeForks || !r.isFork) && (o.includePrivate || !r.isPrivate) && !excluded.has(r.name.toLowerCase())
+  );
+  const visible = (total, restricted) => o.includePrivate ? total : Math.max(0, total - restricted);
+  return {
+    schemaVersion: 1,
+    generatedAt: now.toISOString(),
+    user: {
+      login: p.user.login,
+      name: p.user.name?.trim() ? p.user.name : null,
+      createdYear: new Date(p.user.createdAt).getUTCFullYear(),
+      followers: p.user.followers
+    },
+    repos: {
+      count: repos.length,
+      stars: sum(repos.map((r) => r.stars)),
+      forks: sum(repos.map((r) => r.forks)),
+      top: topRepos(repos)
+    },
+    contributions: {
+      allTime: sum(p.years.map((y) => visible(y.total, y.restricted))),
+      pastYear: visible(p.pastYear.total, p.pastYear.restricted),
+      commits: p.pastYear.commits,
+      pullRequests: p.pastYear.pullRequests,
+      issues: p.pastYear.issues,
+      reviews: p.pastYear.reviews,
+      private: o.includePrivate ? p.pastYear.restricted : 0
+    },
+    calendar: { weeks: [...p.pastYear.weeks] },
+    languages: languageTotals(repos, lowerSet(o.excludeLangs))
+  };
+}
+function topRepos(repos) {
+  return repos.filter((r) => !r.isPrivate).sort((a, b) => b.stars - a.stars).slice(0, TOP_REPOS).map((r) => ({ name: r.name, stars: r.stars, language: r.language }));
+}
+function languageTotals(repos, excluded) {
+  const totals = /* @__PURE__ */ new Map();
+  for (const repo of repos) {
+    for (const { name, color, bytes } of repo.languages) {
+      if (excluded.has(name.toLowerCase())) continue;
+      const entry = totals.get(name);
+      if (!entry) totals.set(name, { name, color, bytes });
+      else {
+        entry.bytes += bytes;
+        entry.color ??= color;
+      }
+    }
+  }
+  return [...totals.values()].sort((a, b) => b.bytes - a.bytes || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+}
+var lowerSet = (xs) => new Set(xs.map((x) => x.toLowerCase()));
+var sum = (xs) => xs.reduce((a, b) => a + b, 0);
+
 // src/collect/queries.ts
 var USER_QUERY = `query {
   viewer {
@@ -20496,6 +20553,7 @@ var REPOS_QUERY = `query($after: String, $isFork: Boolean, $privacy: RepositoryP
       pageInfo { hasNextPage endCursor }
       nodes {
         name
+        isFork
         isPrivate
         stargazerCount
         forkCount
@@ -20517,53 +20575,36 @@ var YEAR_QUERY = `query($from: DateTime!, $to: DateTime!) {
 }`;
 
 // src/collect/collect.ts
-var TOP_REPOS = 6;
 async function collectSnapshot(opts) {
   const now = opts.now ?? (() => /* @__PURE__ */ new Date());
   const query = (q, variables) => graphql({ token: opts.token, query: q, variables, fetch: opts.fetch });
   const { viewer } = await query(USER_QUERY);
   const cc = viewer.contributionsCollection;
-  const excluded = lowerSet(opts.excludeRepos);
-  const repos = (await fetchRepos(query, opts)).filter((r) => !excluded.has(r.name.toLowerCase()));
-  const visible = (total, restricted) => opts.includePrivate ? total : Math.max(0, total - restricted);
-  let allTime = 0;
+  const repos = await fetchRepos(query, opts);
+  const years = [];
   for (const year of cc.contributionYears) {
     const { viewer: y } = await query(YEAR_QUERY, {
       from: `${year}-01-01T00:00:00Z`,
       to: `${year}-12-31T23:59:59Z`
     });
     const yc = y.contributionsCollection;
-    allTime += visible(yc.contributionCalendar.totalContributions, yc.restrictedContributionsCount);
+    years.push({ year, total: yc.contributionCalendar.totalContributions, restricted: yc.restrictedContributionsCount });
   }
-  return {
-    schemaVersion: 1,
-    generatedAt: now().toISOString(),
-    user: {
-      login: viewer.login,
-      name: viewer.name?.trim() ? viewer.name : null,
-      createdYear: new Date(viewer.createdAt).getUTCFullYear(),
-      followers: viewer.followers.totalCount
-    },
-    repos: {
-      count: repos.length,
-      stars: sum(repos.map((r) => r.stargazerCount)),
-      forks: sum(repos.map((r) => r.forkCount)),
-      top: topRepos(repos)
-    },
-    contributions: {
-      allTime,
-      pastYear: visible(cc.contributionCalendar.totalContributions, cc.restrictedContributionsCount),
+  const profile = {
+    user: { login: viewer.login, name: viewer.name, createdAt: viewer.createdAt, followers: viewer.followers.totalCount },
+    pastYear: {
+      total: cc.contributionCalendar.totalContributions,
+      restricted: cc.restrictedContributionsCount,
       commits: cc.totalCommitContributions,
       pullRequests: cc.totalPullRequestContributions,
       issues: cc.totalIssueContributions,
       reviews: cc.totalPullRequestReviewContributions,
-      private: opts.includePrivate ? cc.restrictedContributionsCount : 0
+      weeks: cc.contributionCalendar.weeks.map((w) => sum2(w.contributionDays.map((d) => d.contributionCount)))
     },
-    calendar: {
-      weeks: cc.contributionCalendar.weeks.map((w) => sum(w.contributionDays.map((d) => d.contributionCount)))
-    },
-    languages: languageTotals(repos, lowerSet(opts.excludeLangs))
+    years,
+    repos: repos.map(toProfileRepo)
   };
+  return aggregate(profile, opts, now());
 }
 async function fetchRepos(query, opts) {
   const nodes = [];
@@ -20580,26 +20621,18 @@ async function fetchRepos(query, opts) {
     after = pageInfo.endCursor;
   }
 }
-function topRepos(repos) {
-  return repos.filter((r) => !r.isPrivate).sort((a, b) => b.stargazerCount - a.stargazerCount).slice(0, TOP_REPOS).map((r) => ({ name: r.name, stars: r.stargazerCount, language: r.primaryLanguage?.name ?? null }));
+function toProfileRepo(r) {
+  return {
+    name: r.name,
+    isPrivate: r.isPrivate,
+    isFork: r.isFork,
+    stars: r.stargazerCount,
+    forks: r.forkCount,
+    language: r.primaryLanguage?.name ?? null,
+    languages: (r.languages?.edges ?? []).map(({ size, node }) => ({ name: node.name, color: node.color, bytes: size }))
+  };
 }
-function languageTotals(repos, excluded) {
-  const totals = /* @__PURE__ */ new Map();
-  for (const repo of repos) {
-    for (const { size, node } of repo.languages?.edges ?? []) {
-      if (excluded.has(node.name.toLowerCase())) continue;
-      const entry = totals.get(node.name);
-      if (!entry) totals.set(node.name, { name: node.name, color: node.color, bytes: size });
-      else {
-        entry.bytes += size;
-        entry.color ??= node.color;
-      }
-    }
-  }
-  return [...totals.values()].sort((a, b) => b.bytes - a.bytes || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
-}
-var lowerSet = (xs) => new Set(xs.map((x) => x.toLowerCase()));
-var sum = (xs) => xs.reduce((a, b) => a + b, 0);
+var sum2 = (xs) => xs.reduce((a, b) => a + b, 0);
 
 // src/action/files.ts
 import { mkdir as mkdir2, readFile, writeFile as writeFile2 } from "node:fs/promises";
@@ -20696,9 +20729,11 @@ async function commitIfChanged(changed, git = realGit) {
 function unknownCard(theme, card2) {
   return new Error(`Unknown card "${card2}" for theme "${theme.name}"; available: ${theme.cards.join(", ")}`);
 }
-function defineTheme(name, renderers) {
+function defineTheme(name, stats, renderers) {
   const theme = {
     name,
+    defaultStats: stats.defaultStats,
+    maxStats: stats.maxStats,
     cards: Object.keys(renderers),
     render(card2, s, o) {
       if (!Object.hasOwn(renderers, card2)) throw unknownCard(theme, card2);
@@ -20744,14 +20779,14 @@ var FONT_STACK = '-apple-system,"Segoe UI",Helvetica,Arial,sans-serif';
 var round1 = (x) => Math.round(x * 10) / 10;
 function topLanguages(s, n) {
   const sorted = [...s.languages].sort((a, b) => b.bytes - a.bytes);
-  const total = sorted.reduce((sum2, l) => sum2 + l.bytes, 0);
+  const total = sorted.reduce((sum3, l) => sum3 + l.bytes, 0);
   if (total <= 0) return [];
   const top = sorted.slice(0, n).map((l) => ({
     name: l.name,
     color: l.color ?? OTHER_COLOR,
     pct: round1(l.bytes / total * 100)
   }));
-  const rest = sorted.slice(n).reduce((sum2, l) => sum2 + l.bytes, 0);
+  const rest = sorted.slice(n).reduce((sum3, l) => sum3 + l.bytes, 0);
   if (rest > 0) top.push({ name: "Other", color: OTHER_COLOR, pct: round1(rest / total * 100) });
   return top;
 }
@@ -20763,6 +20798,23 @@ function escapeXml(s) {
 var INT = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 function fmtInt(n) {
   return INT.format(n);
+}
+var UNITS = [
+  { size: 1e3, suffix: "k" },
+  { size: 1e6, suffix: "M" },
+  { size: 1e9, suffix: "B" }
+];
+function fmtCompact(n) {
+  if (n < 1e3) return fmtInt(n);
+  let i = n < 1e6 ? 0 : n < 1e9 ? 1 : 2;
+  let tenths = Math.floor((n * 10 + UNITS[i].size / 2) / UNITS[i].size);
+  if (tenths >= 1e4 && i < UNITS.length - 1) {
+    i += 1;
+    tenths = Math.floor((n * 10 + UNITS[i].size / 2) / UNITS[i].size);
+  }
+  const whole = Math.floor(tenths / 10);
+  const frac = tenths % 10;
+  return `${whole}${frac ? `.${frac}` : ""}${UNITS[i].suffix}`;
 }
 function fmtPct(p) {
   return `${p.toFixed(1)}%`;
@@ -20927,12 +20979,12 @@ function languageBar(slices, box) {
   const r = box.height / 2;
   const frame = `x="${num(box.x)}" y="${num(box.y)}" width="${num(box.width)}" height="${num(box.height)}" rx="${num(r)}"`;
   const shown = slices.filter((l) => l.pct > 0);
-  const sum2 = shown.reduce((a, l) => a + l.pct, 0);
-  if (shown.length === 0 || sum2 <= 0) return [`<rect ${frame} fill="${box.track}"/>`];
+  const sum3 = shown.reduce((a, l) => a + l.pct, 0);
+  if (shown.length === 0 || sum3 <= 0) return [`<rect ${frame} fill="${box.track}"/>`];
   const avail = Math.max(0, box.width - box.gap * (shown.length - 1));
   let x = box.x;
   const segs = shown.map((l) => {
-    const w = Math.max(0, l.pct / sum2 * avail);
+    const w = Math.max(0, l.pct / sum3 * avail);
     const rect = `<rect x="${num(x)}" y="${num(box.y)}" width="${num(w)}" height="${num(box.height)}" fill="${escapeXml(l.color)}"/>`;
     x += w + box.gap;
     return rect;
@@ -20946,6 +20998,53 @@ function languageBar(slices, box) {
 }
 function staleText(date) {
   return `stale \xB7 data as of ${date}`;
+}
+
+// src/render/stats.ts
+var STAT_KEYS = [
+  "stars",
+  "forks",
+  "allTime",
+  "pastYear",
+  "repos",
+  "followers",
+  "commits",
+  "pullRequests",
+  "issues",
+  "reviews",
+  "private",
+  "joined"
+];
+var STATS = {
+  stars: { label: "Stars", short: "\u2605", labelFirst: true, icon: "star", value: (s) => s.repos.stars },
+  forks: { label: "Forks", short: "forks", icon: "fork", value: (s) => s.repos.forks },
+  allTime: { label: "All-time contributions", short: "contributions", icon: "commit", value: (s) => s.contributions.allTime },
+  pastYear: { label: "Contributions (past year)", short: "past year", icon: "clock", value: (s) => s.contributions.pastYear },
+  repos: { label: "Repositories", short: "repos", icon: "repo", value: (s) => s.repos.count },
+  followers: { label: "Followers", short: "followers", icon: "people", value: (s) => s.user.followers },
+  commits: { label: "Commits (past year)", short: "commits", icon: "code", value: (s) => s.contributions.commits },
+  pullRequests: { label: "Pull requests (past year)", short: "PRs", icon: "pr", value: (s) => s.contributions.pullRequests },
+  issues: { label: "Issues (past year)", short: "issues", icon: "issue", value: (s) => s.contributions.issues },
+  reviews: { label: "Reviews (past year)", short: "reviews", icon: "eye", value: (s) => s.contributions.reviews },
+  private: { label: "Private contributions", short: "private", icon: "lock", value: (s) => s.contributions.private },
+  joined: { label: "On GitHub since", short: "since", labelFirst: true, icon: "calendar", value: (s) => s.user.createdYear, raw: true }
+};
+function statValue(def, s) {
+  const v = def.value(s);
+  return def.raw ? String(v) : fmtCompact(v);
+}
+var isStatKey = (k) => STAT_KEYS.includes(k);
+function checkStats(theme, keys) {
+  if (keys.length === 0) return [...theme.defaultStats];
+  const seen = /* @__PURE__ */ new Set();
+  for (const k of keys) {
+    if (!isStatKey(k)) throw new Error(`Unknown stat "${k}"; available: ${STAT_KEYS.join(", ")}`);
+    if (seen.has(k)) throw new Error(`Stat "${k}" is listed twice`);
+    seen.add(k);
+  }
+  if (seen.size > theme.maxStats)
+    throw new Error(`Theme "${theme.name}" shows at most ${theme.maxStats} stats, got ${seen.size}`);
+  return [...seen];
 }
 
 // src/render/themes/native.ts
@@ -20969,7 +21068,14 @@ var ICONS = {
   fork: "M6.25 3.25a1.75 1.75 0 1 1-3.5 0 1.75 1.75 0 1 1 3.5 0M13.25 3.25a1.75 1.75 0 1 1-3.5 0 1.75 1.75 0 1 1 3.5 0M9.75 12.75a1.75 1.75 0 1 1-3.5 0 1.75 1.75 0 1 1 3.5 0M4.5 5v1a1.5 1.5 0 0 0 1.5 1.5h4a1.5 1.5 0 0 0 1.5-1.5V5M8 7.5V11",
   commit: "M10.75 8a2.75 2.75 0 1 1-5.5 0 2.75 2.75 0 1 1 5.5 0M1.25 8h4M10.75 8h4",
   clock: "M14.25 8a6.25 6.25 0 1 1-12.5 0 6.25 6.25 0 1 1 12.5 0M8 4.5V8l2.25 1.5",
-  repo: "M3.25 13.25v-10a1.5 1.5 0 0 1 1.5-1.5h8v10h-8a1.5 1.5 0 0 0 0 3h8"
+  repo: "M3.25 13.25v-10a1.5 1.5 0 0 1 1.5-1.5h8v10h-8a1.5 1.5 0 0 0 0 3h8",
+  people: "M8 5a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 1 1 4.5 0M1.75 13.25a4 4 0 0 1 8 0M10.5 2.9a2.25 2.25 0 0 1 0 4.2M11.75 9.6a4 4 0 0 1 2.5 3.65",
+  code: "M5.25 4.25L1.5 8l3.75 3.75M10.75 4.25L14.5 8l-3.75 3.75M9.25 2.75l-2.5 10.5",
+  pr: "M5.5 3.5a1.75 1.75 0 1 1-3.5 0 1.75 1.75 0 1 1 3.5 0M5.5 12.5a1.75 1.75 0 1 1-3.5 0 1.75 1.75 0 1 1 3.5 0M14 12.5a1.75 1.75 0 1 1-3.5 0 1.75 1.75 0 1 1 3.5 0M3.75 5.25v5.5M12.25 10.75V6a2 2 0 0 0-2-2H7.5M9 2.5L7.5 4 9 5.5",
+  issue: "M14.25 8a6.25 6.25 0 1 1-12.5 0 6.25 6.25 0 1 1 12.5 0M9 8a1 1 0 1 1-2 0 1 1 0 1 1 2 0",
+  eye: "M1.25 8S3.75 3.5 8 3.5 14.75 8 14.75 8 12.25 12.5 8 12.5 1.25 8 1.25 8M10 8a2 2 0 1 1-4 0 2 2 0 1 1 4 0",
+  lock: "M3.75 7.25h8.5v6.5h-8.5zM5.5 7.25V5a2.5 2.5 0 0 1 5 0v2.25M8 9.75v1.5",
+  calendar: "M2.75 3.75h10.5v9.5H2.75zM2.75 6.75h10.5M5.5 2.25v3M10.5 2.25v3"
 };
 var css = (p) => [
   `text{font-family:${FONT_STACK}}`,
@@ -21008,21 +21114,15 @@ function overview(s, o) {
   const suffix = "'s GitHub Statistics";
   const name = s.user.name?.trim() ? s.user.name : s.user.login;
   const title = truncate(name, CW - textWidth(suffix, 15, true), 15, true) + suffix;
-  const rows = [
-    ["star", "Stars", s.repos.stars],
-    ["fork", "Forks", s.repos.forks],
-    ["commit", "All-time contributions", s.contributions.allTime],
-    ["clock", "Contributions (past year)", s.contributions.pastYear],
-    ["repo", "Repositories", s.repos.count]
-  ];
+  const rows = (o.stats ?? native.defaultStats).map((k) => STATS[k]);
   const body = [`<text class="t" x="${X0}" y="${TITLE_BASE}">${escapeXml(title)}</text>`];
-  rows.forEach(([icon, label, value], i) => {
+  rows.forEach((stat2, i) => {
     const top = BODY_TOP + i * ROW_H;
     const iconY = top + (ROW_H - ICON) / 2;
     body.push(
-      `<path class="ic" transform="translate(${X0} ${num(iconY)}) scale(${ICON / 16})" d="${ICONS[icon]}"/>`,
-      `<text class="l" x="${X0 + ICON + 6}" y="${top + 16}">${label}</text>`,
-      `<text class="v" x="${X1}" y="${top + 16}" text-anchor="end">${fmtInt(value)}</text>`
+      `<path class="ic" transform="translate(${X0} ${num(iconY)}) scale(${ICON / 16})" d="${ICONS[stat2.icon]}"/>`,
+      `<text class="l" x="${X0 + ICON + 6}" y="${top + 16}">${escapeXml(stat2.label)}</text>`,
+      `<text class="v" x="${X1}" y="${top + 16}" text-anchor="end">${statValue(stat2, s)}</text>`
     );
   });
   const sparkTop = BODY_TOP + rows.length * ROW_H + 12;
@@ -21063,7 +21163,11 @@ function languages(s, o) {
   const rows = Math.max(1, Math.ceil(slices.length / 2));
   return card(o, "Languages", legendTop + rows * LEGEND_ROW + (rows - 1) * LEGEND_GAP_Y, body);
 }
-var native = defineTheme("native", { overview, languages });
+var native = defineTheme(
+  "native",
+  { defaultStats: ["stars", "forks", "allTime", "pastYear", "repos"], maxStats: 12 },
+  { overview, languages }
+);
 
 // src/render/themes/strip.ts
 var W2 = 820;
@@ -21094,18 +21198,12 @@ function strip(s, o) {
   const p = PRIMER[o.mode];
   const body = [];
   const pillBase = MARGIN_Y + 19.5;
-  const stats = [
-    [fmtInt(s.contributions.allTime), "contributions"],
-    [fmtInt(s.contributions.pastYear), "past year"],
-    [fmtInt(s.repos.count), "repos"],
-    [fmtInt(s.repos.stars), "\u2605", true],
-    [fmtInt(s.user.followers), "followers"]
-  ];
+  const stats = (o.stats ?? stripTheme.defaultStats).map((k) => STATS[k]);
   const texts = [];
   const rules = [];
   let x = 1;
-  stats.forEach(([value, label, labelFirst], i) => {
-    const sec = section(x + PILL_PAD_X, pillBase, value, label, labelFirst);
+  stats.forEach((stat2, i) => {
+    const sec = section(x + PILL_PAD_X, pillBase, statValue(stat2, s), stat2.short, stat2.labelFirst);
     texts.push(sec.text);
     x += PILL_PAD_X + sec.width + PILL_PAD_X;
     if (i < stats.length - 1) {
@@ -21151,7 +21249,11 @@ function strip(s, o) {
   const who = s.user.name?.trim() ? s.user.name : s.user.login;
   return svgDoc({ width: W2, height: H, title: `${who}'s GitHub stats`, css: css2(p), body });
 }
-var stripTheme = defineTheme("strip", { strip });
+var stripTheme = defineTheme(
+  "strip",
+  { defaultStats: ["allTime", "pastYear", "repos", "stars", "followers"], maxStats: 6 },
+  { strip }
+);
 
 // src/render/index.ts
 var THEMES = {
@@ -21167,7 +21269,7 @@ function renderCards(s, cfg) {
   return cards.flatMap(
     (card2) => MODES.map((mode) => ({
       file: `${theme.name}-${card2}-${mode}.svg`,
-      svg: theme.render(card2, s, { mode, staleAsOf: cfg.staleAsOf })
+      svg: theme.render(card2, s, { mode, staleAsOf: cfg.staleAsOf, stats: cfg.stats })
     }))
   );
 }
@@ -21193,10 +21295,13 @@ function readInputs(get) {
   const theme = THEMES[themeName];
   const chosen = list(get("cards"));
   for (const card2 of chosen) if (!theme.cards.includes(card2)) throw unknownCard(theme, card2);
+  const statKeys = list(get("stats"));
+  const stats = statKeys.length > 0 ? checkStats(theme, statKeys) : void 0;
   return {
     token,
     theme: theme.name,
     cards: chosen.length > 0 ? chosen : void 0,
+    stats,
     includePrivate: bool("include_private", true),
     includeForks: bool("include_forks", false),
     excludeRepos: list(get("exclude_repos")),
@@ -21256,7 +21361,7 @@ async function update(cfg, deps) {
   } catch (err) {
     reasons = [message(err)];
   }
-  const cards = (s, staleAsOf) => renderCards(s, { theme: cfg.theme, cards: cfg.cards, staleAsOf }).map((c) => ({
+  const cards = (s, staleAsOf) => renderCards(s, { theme: cfg.theme, cards: cfg.cards, stats: cfg.stats, staleAsOf }).map((c) => ({
     path: `${cfg.outputDir}/${c.file}`,
     content: c.svg
   }));

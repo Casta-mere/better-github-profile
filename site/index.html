@@ -77,6 +77,12 @@
           </fieldset>
 
           <fieldset class="group">
+            <legend data-i18n="controls.stats">Stats</legend>
+            <p class="note" data-i18n="controls.statsNote">Tick what to show; drag or use the arrows to reorder.</p>
+            <ol id="stats" class="stats"></ol>
+          </fieldset>
+
+          <fieldset class="group">
             <legend data-i18n="controls.data">Data</legend>
             <label class="switch">
               <input type="checkbox" role="switch" name="includePrivate" data-control="includePrivate" checked />
@@ -96,9 +102,7 @@
               <span data-i18n="controls.excludeLangs">Exclude languages</span>
               <input type="text" name="excludeLangs" data-control="excludeLangs" placeholder="HTML, Jupyter Notebook" spellcheck="false" />
             </label>
-            <p class="note" data-i18n="controls.listNote">
-              Comma-separated. The preview uses fixed sample data, so exclusions only change the workflow.
-            </p>
+            <p class="note" data-i18n="controls.listNote">Comma-separated.</p>
           </fieldset>
 
           <fieldset class="group">
@@ -125,6 +129,7 @@
               </div>
             </div>
             <div id="preview" class="preview"></div>
+            <p id="preview-source" class="note preview-source" aria-live="polite"></p>
           </section>
 
           <p id="links-hint" class="links-hint" data-i18n="linksHint.text">
@@ -362,7 +367,7 @@
     </main>
 
     <footer class="container site-footer" data-i18n="footer">
-      The preview renders a fixed sample snapshot with the same code the Action runs.
+      The preview renders with the same code the Action runs.
     </footer>
 
     <script type="module" src="./main.ts"></script>
