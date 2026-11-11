@@ -1,5 +1,5 @@
 import type { CollectOptions } from '../collect/collect';
-import { THEMES } from '../render/index';
+import { checkStats, THEMES, type StatKey } from '../render/index';
 import { unknownCard } from '../render/theme';
 import type { ThemeName } from '../snapshot/types';
 
@@ -7,6 +7,8 @@ export interface ActionConfig extends CollectOptions {
   theme: ThemeName;
   /** Undefined = every card of the theme. */
   cards?: string[];
+  /** Stats on the cards, in order. Undefined = the theme's default. */
+  stats?: StatKey[];
   /** Repo-relative, without a trailing slash. */
   outputDir: string;
   telemetry: boolean;
@@ -50,10 +52,14 @@ export function readInputs(get: (name: string) => string): ActionConfig {
   const chosen = list(get('cards'));
   for (const card of chosen) if (!theme.cards.includes(card)) throw unknownCard(theme, card);
 
+  const statKeys = list(get('stats'));
+  const stats = statKeys.length > 0 ? checkStats(theme, statKeys) : undefined;
+
   return {
     token,
     theme: theme.name,
     cards: chosen.length > 0 ? chosen : undefined,
+    stats,
     includePrivate: bool('include_private', true),
     includeForks: bool('include_forks', false),
     excludeRepos: list(get('exclude_repos')),

@@ -20696,9 +20696,11 @@ async function commitIfChanged(changed, git = realGit) {
 function unknownCard(theme, card2) {
   return new Error(`Unknown card "${card2}" for theme "${theme.name}"; available: ${theme.cards.join(", ")}`);
 }
-function defineTheme(name, renderers) {
+function defineTheme(name, stats, renderers) {
   const theme = {
     name,
+    defaultStats: stats.defaultStats,
+    maxStats: stats.maxStats,
     cards: Object.keys(renderers),
     render(card2, s, o) {
       if (!Object.hasOwn(renderers, card2)) throw unknownCard(theme, card2);
@@ -20948,6 +20950,53 @@ function staleText(date) {
   return `stale \xB7 data as of ${date}`;
 }
 
+// src/render/stats.ts
+var STAT_KEYS = [
+  "stars",
+  "forks",
+  "allTime",
+  "pastYear",
+  "repos",
+  "followers",
+  "commits",
+  "pullRequests",
+  "issues",
+  "reviews",
+  "private",
+  "joined"
+];
+var STATS = {
+  stars: { label: "Stars", short: "\u2605", labelFirst: true, icon: "star", value: (s) => s.repos.stars },
+  forks: { label: "Forks", short: "forks", icon: "fork", value: (s) => s.repos.forks },
+  allTime: { label: "All-time contributions", short: "contributions", icon: "commit", value: (s) => s.contributions.allTime },
+  pastYear: { label: "Contributions (past year)", short: "past year", icon: "clock", value: (s) => s.contributions.pastYear },
+  repos: { label: "Repositories", short: "repos", icon: "repo", value: (s) => s.repos.count },
+  followers: { label: "Followers", short: "followers", icon: "people", value: (s) => s.user.followers },
+  commits: { label: "Commits (past year)", short: "commits", icon: "code", value: (s) => s.contributions.commits },
+  pullRequests: { label: "Pull requests (past year)", short: "PRs", icon: "pr", value: (s) => s.contributions.pullRequests },
+  issues: { label: "Issues (past year)", short: "issues", icon: "issue", value: (s) => s.contributions.issues },
+  reviews: { label: "Reviews (past year)", short: "reviews", icon: "eye", value: (s) => s.contributions.reviews },
+  private: { label: "Private contributions", short: "private", icon: "lock", value: (s) => s.contributions.private },
+  joined: { label: "On GitHub since", short: "since", labelFirst: true, icon: "calendar", value: (s) => s.user.createdYear, raw: true }
+};
+function statValue(def, s) {
+  const v = def.value(s);
+  return def.raw ? String(v) : fmtInt(v);
+}
+var isStatKey = (k) => STAT_KEYS.includes(k);
+function checkStats(theme, keys) {
+  if (keys.length === 0) return [...theme.defaultStats];
+  const seen = /* @__PURE__ */ new Set();
+  for (const k of keys) {
+    if (!isStatKey(k)) throw new Error(`Unknown stat "${k}"; available: ${STAT_KEYS.join(", ")}`);
+    if (seen.has(k)) throw new Error(`Stat "${k}" is listed twice`);
+    seen.add(k);
+  }
+  if (seen.size > theme.maxStats)
+    throw new Error(`Theme "${theme.name}" shows at most ${theme.maxStats} stats, got ${seen.size}`);
+  return [...seen];
+}
+
 // src/render/themes/native.ts
 var W = 330;
 var PAD_Y = 18;
@@ -20969,7 +21018,14 @@ var ICONS = {
   fork: "M6.25 3.25a1.75 1.75 0 1 1-3.5 0 1.75 1.75 0 1 1 3.5 0M13.25 3.25a1.75 1.75 0 1 1-3.5 0 1.75 1.75 0 1 1 3.5 0M9.75 12.75a1.75 1.75 0 1 1-3.5 0 1.75 1.75 0 1 1 3.5 0M4.5 5v1a1.5 1.5 0 0 0 1.5 1.5h4a1.5 1.5 0 0 0 1.5-1.5V5M8 7.5V11",
   commit: "M10.75 8a2.75 2.75 0 1 1-5.5 0 2.75 2.75 0 1 1 5.5 0M1.25 8h4M10.75 8h4",
   clock: "M14.25 8a6.25 6.25 0 1 1-12.5 0 6.25 6.25 0 1 1 12.5 0M8 4.5V8l2.25 1.5",
-  repo: "M3.25 13.25v-10a1.5 1.5 0 0 1 1.5-1.5h8v10h-8a1.5 1.5 0 0 0 0 3h8"
+  repo: "M3.25 13.25v-10a1.5 1.5 0 0 1 1.5-1.5h8v10h-8a1.5 1.5 0 0 0 0 3h8",
+  people: "M8 5a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 1 1 4.5 0M1.75 13.25a4 4 0 0 1 8 0M10.5 2.9a2.25 2.25 0 0 1 0 4.2M11.75 9.6a4 4 0 0 1 2.5 3.65",
+  code: "M5.25 4.25L1.5 8l3.75 3.75M10.75 4.25L14.5 8l-3.75 3.75M9.25 2.75l-2.5 10.5",
+  pr: "M5.5 3.5a1.75 1.75 0 1 1-3.5 0 1.75 1.75 0 1 1 3.5 0M5.5 12.5a1.75 1.75 0 1 1-3.5 0 1.75 1.75 0 1 1 3.5 0M14 12.5a1.75 1.75 0 1 1-3.5 0 1.75 1.75 0 1 1 3.5 0M3.75 5.25v5.5M12.25 10.75V6a2 2 0 0 0-2-2H7.5M9 2.5L7.5 4 9 5.5",
+  issue: "M14.25 8a6.25 6.25 0 1 1-12.5 0 6.25 6.25 0 1 1 12.5 0M9 8a1 1 0 1 1-2 0 1 1 0 1 1 2 0",
+  eye: "M1.25 8S3.75 3.5 8 3.5 14.75 8 14.75 8 12.25 12.5 8 12.5 1.25 8 1.25 8M10 8a2 2 0 1 1-4 0 2 2 0 1 1 4 0",
+  lock: "M3.75 7.25h8.5v6.5h-8.5zM5.5 7.25V5a2.5 2.5 0 0 1 5 0v2.25M8 9.75v1.5",
+  calendar: "M2.75 3.75h10.5v9.5H2.75zM2.75 6.75h10.5M5.5 2.25v3M10.5 2.25v3"
 };
 var css = (p) => [
   `text{font-family:${FONT_STACK}}`,
@@ -21008,21 +21064,15 @@ function overview(s, o) {
   const suffix = "'s GitHub Statistics";
   const name = s.user.name?.trim() ? s.user.name : s.user.login;
   const title = truncate(name, CW - textWidth(suffix, 15, true), 15, true) + suffix;
-  const rows = [
-    ["star", "Stars", s.repos.stars],
-    ["fork", "Forks", s.repos.forks],
-    ["commit", "All-time contributions", s.contributions.allTime],
-    ["clock", "Contributions (past year)", s.contributions.pastYear],
-    ["repo", "Repositories", s.repos.count]
-  ];
+  const rows = (o.stats ?? native.defaultStats).map((k) => STATS[k]);
   const body = [`<text class="t" x="${X0}" y="${TITLE_BASE}">${escapeXml(title)}</text>`];
-  rows.forEach(([icon, label, value], i) => {
+  rows.forEach((stat2, i) => {
     const top = BODY_TOP + i * ROW_H;
     const iconY = top + (ROW_H - ICON) / 2;
     body.push(
-      `<path class="ic" transform="translate(${X0} ${num(iconY)}) scale(${ICON / 16})" d="${ICONS[icon]}"/>`,
-      `<text class="l" x="${X0 + ICON + 6}" y="${top + 16}">${label}</text>`,
-      `<text class="v" x="${X1}" y="${top + 16}" text-anchor="end">${fmtInt(value)}</text>`
+      `<path class="ic" transform="translate(${X0} ${num(iconY)}) scale(${ICON / 16})" d="${ICONS[stat2.icon]}"/>`,
+      `<text class="l" x="${X0 + ICON + 6}" y="${top + 16}">${escapeXml(stat2.label)}</text>`,
+      `<text class="v" x="${X1}" y="${top + 16}" text-anchor="end">${statValue(stat2, s)}</text>`
     );
   });
   const sparkTop = BODY_TOP + rows.length * ROW_H + 12;
@@ -21063,7 +21113,11 @@ function languages(s, o) {
   const rows = Math.max(1, Math.ceil(slices.length / 2));
   return card(o, "Languages", legendTop + rows * LEGEND_ROW + (rows - 1) * LEGEND_GAP_Y, body);
 }
-var native = defineTheme("native", { overview, languages });
+var native = defineTheme(
+  "native",
+  { defaultStats: ["stars", "forks", "allTime", "pastYear", "repos"], maxStats: 12 },
+  { overview, languages }
+);
 
 // src/render/themes/strip.ts
 var W2 = 820;
@@ -21094,18 +21148,12 @@ function strip(s, o) {
   const p = PRIMER[o.mode];
   const body = [];
   const pillBase = MARGIN_Y + 19.5;
-  const stats = [
-    [fmtInt(s.contributions.allTime), "contributions"],
-    [fmtInt(s.contributions.pastYear), "past year"],
-    [fmtInt(s.repos.count), "repos"],
-    [fmtInt(s.repos.stars), "\u2605", true],
-    [fmtInt(s.user.followers), "followers"]
-  ];
+  const stats = (o.stats ?? stripTheme.defaultStats).map((k) => STATS[k]);
   const texts = [];
   const rules = [];
   let x = 1;
-  stats.forEach(([value, label, labelFirst], i) => {
-    const sec = section(x + PILL_PAD_X, pillBase, value, label, labelFirst);
+  stats.forEach((stat2, i) => {
+    const sec = section(x + PILL_PAD_X, pillBase, statValue(stat2, s), stat2.short, stat2.labelFirst);
     texts.push(sec.text);
     x += PILL_PAD_X + sec.width + PILL_PAD_X;
     if (i < stats.length - 1) {
@@ -21151,7 +21199,11 @@ function strip(s, o) {
   const who = s.user.name?.trim() ? s.user.name : s.user.login;
   return svgDoc({ width: W2, height: H, title: `${who}'s GitHub stats`, css: css2(p), body });
 }
-var stripTheme = defineTheme("strip", { strip });
+var stripTheme = defineTheme(
+  "strip",
+  { defaultStats: ["allTime", "pastYear", "repos", "stars", "followers"], maxStats: 6 },
+  { strip }
+);
 
 // src/render/index.ts
 var THEMES = {
@@ -21167,7 +21219,7 @@ function renderCards(s, cfg) {
   return cards.flatMap(
     (card2) => MODES.map((mode) => ({
       file: `${theme.name}-${card2}-${mode}.svg`,
-      svg: theme.render(card2, s, { mode, staleAsOf: cfg.staleAsOf })
+      svg: theme.render(card2, s, { mode, staleAsOf: cfg.staleAsOf, stats: cfg.stats })
     }))
   );
 }
@@ -21193,10 +21245,13 @@ function readInputs(get) {
   const theme = THEMES[themeName];
   const chosen = list(get("cards"));
   for (const card2 of chosen) if (!theme.cards.includes(card2)) throw unknownCard(theme, card2);
+  const statKeys = list(get("stats"));
+  const stats = statKeys.length > 0 ? checkStats(theme, statKeys) : void 0;
   return {
     token,
     theme: theme.name,
     cards: chosen.length > 0 ? chosen : void 0,
+    stats,
     includePrivate: bool("include_private", true),
     includeForks: bool("include_forks", false),
     excludeRepos: list(get("exclude_repos")),
@@ -21256,7 +21311,7 @@ async function update(cfg, deps) {
   } catch (err) {
     reasons = [message(err)];
   }
-  const cards = (s, staleAsOf) => renderCards(s, { theme: cfg.theme, cards: cfg.cards, staleAsOf }).map((c) => ({
+  const cards = (s, staleAsOf) => renderCards(s, { theme: cfg.theme, cards: cfg.cards, stats: cfg.stats, staleAsOf }).map((c) => ({
     path: `${cfg.outputDir}/${c.file}`,
     content: c.svg
   }));

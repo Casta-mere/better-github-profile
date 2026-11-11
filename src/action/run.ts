@@ -63,7 +63,7 @@ async function update(cfg: ActionConfig, deps: RunDeps): Promise<RunResult> {
   }
 
   const cards = (s: Snapshot, staleAsOf?: string): OutputFile[] =>
-    renderCards(s, { theme: cfg.theme, cards: cfg.cards, staleAsOf }).map((c) => ({
+    renderCards(s, { theme: cfg.theme, cards: cfg.cards, stats: cfg.stats, staleAsOf }).map((c) => ({
       path: `${cfg.outputDir}/${c.file}`,
       content: c.svg,
     }));

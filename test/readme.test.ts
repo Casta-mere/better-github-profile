@@ -42,6 +42,7 @@ describe('README', () => {
       'token',
       'theme',
       'cards',
+      'stats',
       'exclude_repos',
       'exclude_langs',
       'include_forks',

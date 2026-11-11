@@ -154,6 +154,28 @@ describe('run', () => {
     ]);
   });
 
+  it('renders the chosen stats', async () => {
+    const { deps, files } = fakeDeps();
+    await run({ ...cfg, stats: ['followers'] }, deps);
+    const t = texts(files.get('cards/native-overview-light.svg')!);
+    expect(t).toContain('Followers');
+    expect(t).not.toContain('Forks');
+  });
+
+  it('renders the chosen stats on stale cards too', async () => {
+    const { deps, files } = fakeDeps({
+      prev: prevSnapshot,
+      collect: async () => {
+        throw new Error('boom');
+      },
+    });
+    await run({ ...cfg, stats: ['followers'] }, deps);
+    const t = texts(files.get('cards/native-overview-light.svg')!);
+    expect(t).toContain('Followers');
+    expect(t).not.toContain('Forks');
+    expect(t).toContain('stale · data as of 2026-11-01');
+  });
+
   it('ping is called once per run when telemetry is true, never when false', async () => {
     for (const make of [
       () => fakeDeps(), // fresh
