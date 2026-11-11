@@ -36,9 +36,11 @@ async function must(git: Git, args: string[]): Promise<GitResult> {
 }
 
 /**
- * Commits the changed paths as github-actions[bot] and pushes. When the push is rejected
- * because the branch moved during the run, rebases onto it and pushes once more before
- * failing. Returns false when git sees nothing to commit.
+ * Commits the changed paths as github-actions[bot] and pushes. A path may be a tracked file
+ * the run deleted: `git add -- <path>` stages its removal (Git 2.0 and later), and
+ * `git commit -- <path>` records it. When the push is rejected because the branch moved
+ * during the run, rebases onto it and pushes once more before failing. Returns false when
+ * git sees nothing to commit.
  */
 export async function commitIfChanged(changed: string[], git: Git = realGit): Promise<boolean> {
   if (changed.length === 0) return false;

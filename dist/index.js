@@ -20635,7 +20635,7 @@ function toProfileRepo(r) {
 var sum2 = (xs) => xs.reduce((a, b) => a + b, 0);
 
 // src/action/files.ts
-import { mkdir as mkdir2, readFile, writeFile as writeFile2 } from "node:fs/promises";
+import { mkdir as mkdir2, readdir as readdir2, readFile, unlink as unlink2, writeFile as writeFile2 } from "node:fs/promises";
 import { dirname as dirname3 } from "node:path";
 
 // src/snapshot/types.ts
@@ -20688,6 +20688,27 @@ async function writeOutputs(files) {
     changed.push(f.path);
   }
   return changed;
+}
+async function listFiles(dir) {
+  try {
+    const entries = await readdir2(dir, { withFileTypes: true });
+    return entries.filter((e) => e.isFile()).map((e) => e.name);
+  } catch (err) {
+    if (isMissing(err)) return [];
+    throw err;
+  }
+}
+async function removeFiles(paths) {
+  const removed = [];
+  for (const path4 of paths) {
+    try {
+      await unlink2(path4);
+      removed.push(path4);
+    } catch (err) {
+      if (!isMissing(err)) throw err;
+    }
+  }
+  return removed;
 }
 
 // src/action/git.ts
@@ -21334,6 +21355,18 @@ function sameContent(a, b) {
   return content(a) === content(b);
 }
 
+// src/action/cleanup.ts
+var MODES2 = ["light", "dark"];
+var OWN_CARDS = new Set(
+  Object.values(THEMES).flatMap(
+    (theme) => theme.cards.flatMap((card2) => MODES2.map((mode) => `${theme.name}-${card2}-${mode}.svg`))
+  )
+);
+function staleCards(existing, rendered) {
+  const keep = new Set(rendered);
+  return existing.filter((name) => OWN_CARDS.has(name) && !keep.has(name));
+}
+
 // src/action/run.ts
 var message = (err) => err instanceof Error ? err.message : String(err);
 async function run(cfg, deps) {
@@ -21365,10 +21398,7 @@ async function update(cfg, deps) {
     path: `${cfg.outputDir}/${c.file}`,
     content: c.svg
   }));
-  const save = async (files) => {
-    const changed2 = await deps.write(files);
-    return { changed: changed2, committed: changed2.length > 0 ? await deps.commit(changed2) : false };
-  };
+  const commit = async (paths) => paths.length > 0 ? await deps.commit(paths) : false;
   if (next === null) {
     if (prev === null) throw new Error(`Could not build the first snapshot: ${reasons.join("; ")}`);
     const asOf = prev.generatedAt.slice(0, 10);
@@ -21376,16 +21406,25 @@ async function update(cfg, deps) {
     deps.warn(
       `Using last good snapshot from ${asOf}: ${why}. The cards show "stale \xB7 data as of ${asOf}" until a run succeeds. If a value really did drop to 0, delete ${snapshotPath} and the next run starts fresh.`
     );
-    const { committed: committed2 } = await save(cards(prev, asOf));
+    const committed2 = await commit(await deps.write(cards(prev, asOf)));
     return { status: "stale", committed: committed2 };
   }
   const snapshot = prev !== null && sameContent(next, prev) ? prev : next;
-  const { changed, committed } = await save([
-    { path: snapshotPath, content: `${JSON.stringify(snapshot, null, 2)}
-` },
-    ...cards(snapshot)
-  ]);
+  const files = [{ path: snapshotPath, content: `${JSON.stringify(snapshot, null, 2)}
+` }, ...cards(snapshot)];
+  const changed = await deps.write(files);
+  const removed = await removeStale(cfg.outputDir, files, deps);
+  const committed = await commit([...changed, ...removed]);
   return { status: changed.length > 0 ? "fresh" : "unchanged", committed };
+}
+async function removeStale(dir, written, deps) {
+  const prefix = `${dir}/`;
+  const rendered = written.map((f) => f.path.slice(prefix.length));
+  const stale = staleCards(await deps.list(dir), rendered);
+  if (stale.length === 0) return [];
+  const removed = await deps.remove(stale.map((name) => prefix + name));
+  for (const path4 of removed) deps.info(`Removed ${path4}: this run no longer renders it.`);
+  return removed;
 }
 
 // src/action/telemetry.ts
@@ -21452,7 +21491,10 @@ async function main() {
       collect: () => collectSnapshot({ ...cfg, now }),
       readPrev: () => readSnapshot(`${cfg.outputDir}/snapshot.json`, (msg) => warning(msg)),
       write: (files) => writeOutputs(files),
+      list: (dir) => listFiles(dir),
+      remove: (paths) => removeFiles(paths),
       commit: (changed) => commitIfChanged(changed),
+      info: (msg) => info(msg),
       warn: (msg) => warning(msg),
       now
     });

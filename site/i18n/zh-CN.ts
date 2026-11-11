@@ -124,7 +124,7 @@ export const zhCN: Messages = {
   'step2.view': '查看',
   'step2.trouble': '无法检查工作流是否已存在：{trouble}如果已存在，请改为{update}（复制，在编辑器中全选，粘贴，提交）。{retry}',
   'step2.updateIt': '更新现有工作流',
-  'step2.oldCards': '之前主题生成的卡片仍保留在 {dir} 中，可按需删除。',
+  'step2.oldCards': '工作流下次运行时，会从 {dir} 中删除之前主题生成的卡片。',
 
   // Step 3
   'step3.title': '运行并检查',

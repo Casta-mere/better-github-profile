@@ -133,7 +133,7 @@ export const en = {
   'step2.trouble':
     'Couldn’t check whether the workflow already exists: {trouble} If it does, {update} instead (copy, select all in the editor, paste, commit). {retry}',
   'step2.updateIt': 'update it',
-  'step2.oldCards': 'Cards from a previous theme stay in {dir}; delete them if you like.',
+  'step2.oldCards': 'On its next run, the workflow deletes your previous theme’s cards from {dir}.',
 
   // Step 3
   'step3.title': 'Run it and check',

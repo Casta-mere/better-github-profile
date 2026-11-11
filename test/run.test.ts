@@ -28,10 +28,16 @@ const CARD_FILES = [
   'cards/native-languages-dark.svg',
 ];
 
-/** An in-memory repo: `write` keeps the files and reports which ones changed. */
-function fakeDeps(opts: { prev?: Snapshot | null; collect?: () => Promise<Snapshot> } = {}) {
+const STRIP_FILES = ['cards/strip-strip-light.svg', 'cards/strip-strip-dark.svg'];
+
+/**
+ * An in-memory repo: `write` keeps the files and reports which ones changed, `list` and
+ * `remove` see the same files. `existing` are other files already in the repo.
+ */
+function fakeDeps(opts: { prev?: Snapshot | null; collect?: () => Promise<Snapshot>; existing?: string[] } = {}) {
   const files = new Map<string, string>();
   if (opts.prev) files.set('cards/snapshot.json', `${JSON.stringify(opts.prev, null, 2)}\n`);
+  for (const path of opts.existing ?? []) files.set(path, `kept ${path}`);
   const deps = {
     ping: vi.fn(async () => {}),
     collect: vi.fn(opts.collect ?? (async () => ({ ...casta, generatedAt: '2026-11-06T03:17:00.000Z' }))),
@@ -44,7 +50,14 @@ function fakeDeps(opts: { prev?: Snapshot | null; collect?: () => Promise<Snapsh
       for (const f of out) files.set(f.path, f.content);
       return changed;
     }),
+    list: vi.fn(async (dir: string) =>
+      [...files.keys()]
+        .filter((p) => p.startsWith(`${dir}/`) && !p.slice(dir.length + 1).includes('/'))
+        .map((p) => p.slice(dir.length + 1)),
+    ),
+    remove: vi.fn(async (paths: string[]) => paths.filter((p) => files.delete(p))),
     commit: vi.fn(async (changed: string[]) => changed.length > 0),
+    info: vi.fn((msg: string) => void msg),
     warn: vi.fn((msg: string) => void msg),
     now: () => new Date('2026-11-06T03:17:00.000Z'),
   } satisfies RunDeps;
@@ -76,6 +89,7 @@ describe('run', () => {
     deps.commit.mockClear();
     expect(await run(cfg, deps)).toEqual({ status: 'unchanged', committed: false });
     await expect(deps.write.mock.results[1].value).resolves.toEqual([]);
+    expect(deps.remove).not.toHaveBeenCalled();
     expect(deps.commit).not.toHaveBeenCalled();
     expect(files).toEqual(before);
   });
@@ -84,6 +98,99 @@ describe('run', () => {
     const { deps } = fakeDeps({ prev: prevSnapshot });
     await run({ ...cfg, theme: 'strip' }, deps);
     expect(deps.commit).toHaveBeenCalledWith(['cards/strip-strip-light.svg', 'cards/strip-strip-dark.svg']);
+  });
+
+  it("a theme switch removes the previous theme's cards in the same commit", async () => {
+    const { deps, files } = fakeDeps();
+    await run(cfg, deps); // native
+    deps.commit.mockClear();
+
+    expect(await run({ ...cfg, theme: 'strip' }, deps)).toEqual({ status: 'fresh', committed: true });
+    expect(deps.remove).toHaveBeenCalledWith(CARD_FILES);
+    expect(deps.commit).toHaveBeenCalledTimes(1);
+    expect(deps.commit).toHaveBeenCalledWith([...STRIP_FILES, ...CARD_FILES]);
+    expect([...files.keys()].sort()).toEqual(['cards/snapshot.json', ...STRIP_FILES].sort());
+    expect(deps.info.mock.calls.map(([msg]) => msg)).toEqual(
+      CARD_FILES.map((path) => `Removed ${path}: this run no longer renders it.`),
+    );
+  });
+
+  it('removes cards after writing the new ones', async () => {
+    const order: string[] = [];
+    const { deps } = fakeDeps({ prev: prevSnapshot, existing: CARD_FILES });
+    deps.write.mockImplementation(async (out) => (order.push('write'), out.map((f) => f.path)));
+    deps.remove.mockImplementation(async (paths) => (order.push('remove'), paths));
+    deps.commit.mockImplementation(async () => (order.push('commit'), true));
+    await run({ ...cfg, theme: 'strip' }, deps);
+    expect(order).toEqual(['write', 'remove', 'commit']);
+  });
+
+  it('unchanged data with cards to remove still removes them and commits', async () => {
+    const { deps, files } = fakeDeps();
+    await run(cfg, deps);
+    deps.commit.mockClear();
+
+    const languagesOnly = { ...cfg, cards: ['languages'] };
+    expect(await run(languagesOnly, deps)).toEqual({ status: 'unchanged', committed: true });
+    await expect(deps.write.mock.results[1].value).resolves.toEqual([]);
+    const overview = ['cards/native-overview-light.svg', 'cards/native-overview-dark.svg'];
+    expect(deps.commit).toHaveBeenCalledWith(overview);
+    for (const path of overview) expect(files.has(path)).toBe(false);
+
+    // Nothing left to remove: the next run commits nothing.
+    deps.commit.mockClear();
+    deps.remove.mockClear();
+    expect(await run(languagesOnly, deps)).toEqual({ status: 'unchanged', committed: false });
+    expect(deps.remove).not.toHaveBeenCalled();
+    expect(deps.commit).not.toHaveBeenCalled();
+  });
+
+  it('leaves unrelated files in the output directory alone', async () => {
+    const unrelated = [
+      'cards/README.md',
+      'cards/logo.svg',
+      'cards/my-native-overview-light.svg',
+      'cards/neon-overview-light.svg',
+      'cards/native-strip-light.svg',
+      'cards/old/native-overview-light.svg',
+      'native-overview-light.svg',
+    ];
+    const { deps, files } = fakeDeps({ prev: prevSnapshot, existing: [...unrelated, ...CARD_FILES] });
+    await run({ ...cfg, theme: 'strip' }, deps);
+    expect([...files.keys()].sort()).toEqual([...unrelated, 'cards/snapshot.json', ...STRIP_FILES].sort());
+  });
+
+  it('only looks in the current output directory', async () => {
+    const { deps, files } = fakeDeps({ existing: CARD_FILES });
+    await run({ ...cfg, theme: 'strip', outputDir: 'img/stats' }, deps);
+    expect(deps.list).toHaveBeenCalledWith('img/stats');
+    expect(deps.remove).not.toHaveBeenCalled();
+    for (const path of CARD_FILES) expect(files.has(path)).toBe(true);
+  });
+
+  it('a stale run removes nothing', async () => {
+    for (const collect of [
+      async () => Promise.reject(new Error('HTTP 502')),
+      async () => ({ ...casta, generatedAt: '2026-11-06T03:17:00.000Z', repos: { ...casta.repos, stars: 0 } }),
+    ]) {
+      const { deps, files } = fakeDeps({ prev: prevSnapshot, existing: CARD_FILES, collect });
+      expect(await run({ ...cfg, theme: 'strip' }, deps)).toEqual({ status: 'stale', committed: true });
+      expect(deps.list).not.toHaveBeenCalled();
+      expect(deps.remove).not.toHaveBeenCalled();
+      expect(deps.commit).toHaveBeenCalledWith(STRIP_FILES);
+      for (const path of CARD_FILES) expect(files.has(path)).toBe(true);
+    }
+  });
+
+  it('a failed first run removes nothing', async () => {
+    const { deps, files } = fakeDeps({
+      existing: CARD_FILES,
+      collect: async () => Promise.reject(new Error('HTTP 502')),
+    });
+    await expect(run({ ...cfg, theme: 'strip' }, deps)).rejects.toThrow('HTTP 502');
+    expect(deps.list).not.toHaveBeenCalled();
+    expect(deps.remove).not.toHaveBeenCalled();
+    for (const path of CARD_FILES) expect(files.has(path)).toBe(true);
   });
 
   it('fetch error with prev → stale, warns, keeps snapshot', async () => {

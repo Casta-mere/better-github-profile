@@ -2,6 +2,7 @@ import { checkPlausible } from '../guard/plausible';
 import { renderCards } from '../render/index';
 import { sameContent } from '../snapshot/compare';
 import type { Snapshot } from '../snapshot/types';
+import { staleCards } from './cleanup';
 import type { ActionConfig } from './inputs';
 
 export interface OutputFile {
@@ -17,8 +18,13 @@ export interface RunDeps {
   readPrev(): Promise<Snapshot | null>;
   /** Writes the files; returns the paths whose content actually changed. */
   write(files: OutputFile[]): Promise<string[]>;
-  /** Commits and pushes the given paths; false when there was nothing to commit. */
+  /** The names of the files directly in `dir`; empty when it doesn't exist. */
+  list(dir: string): Promise<string[]>;
+  /** Deletes the files; returns the paths it actually deleted. */
+  remove(paths: string[]): Promise<string[]>;
+  /** Commits and pushes the given paths, written or deleted; false when there was nothing to commit. */
   commit(changed: string[]): Promise<boolean>;
+  info(msg: string): void;
   warn(msg: string): void;
   now(): Date;
 }
@@ -30,7 +36,8 @@ const message = (err: unknown) => (err instanceof Error ? err.message : String(e
 /**
  * The fail-safe flow. A failed or implausible fetch never replaces the last good snapshot:
  * with one, the cards are re-rendered from it, marked stale, and the step only warns. Throws
- * only when there is no previous snapshot to fall back on. The usage ping (when enabled) is
+ * only when there is no previous snapshot to fall back on. Only a run with good data deletes
+ * the Action's own cards that it no longer renders. The usage ping (when enabled) is
  * the very last thing on every outcome, and its errors are swallowed.
  */
 export async function run(cfg: ActionConfig, deps: RunDeps): Promise<RunResult> {
@@ -68,10 +75,7 @@ async function update(cfg: ActionConfig, deps: RunDeps): Promise<RunResult> {
       content: c.svg,
     }));
 
-  const save = async (files: OutputFile[]) => {
-    const changed = await deps.write(files);
-    return { changed, committed: changed.length > 0 ? await deps.commit(changed) : false };
-  };
+  const commit = async (paths: string[]) => (paths.length > 0 ? await deps.commit(paths) : false);
 
   if (next === null) {
     if (prev === null) throw new Error(`Could not build the first snapshot: ${reasons.join('; ')}`);
@@ -82,16 +86,28 @@ async function update(cfg: ActionConfig, deps: RunDeps): Promise<RunResult> {
         `The cards show "stale · data as of ${asOf}" until a run succeeds. ` +
         `If a value really did drop to 0, delete ${snapshotPath} and the next run starts fresh.`,
     );
-    // The snapshot file is left alone: only the cards are re-rendered.
-    const { committed } = await save(cards(prev, asOf));
+    // The snapshot file is left alone: only the cards are re-rendered, and nothing is deleted.
+    const committed = await commit(await deps.write(cards(prev, asOf)));
     return { status: 'stale', committed };
   }
 
   // Unchanged data keeps the previous timestamp, so the snapshot file stays byte-identical.
   const snapshot = prev !== null && sameContent(next, prev) ? prev : next;
-  const { changed, committed } = await save([
-    { path: snapshotPath, content: `${JSON.stringify(snapshot, null, 2)}\n` },
-    ...cards(snapshot),
-  ]);
+  const files = [{ path: snapshotPath, content: `${JSON.stringify(snapshot, null, 2)}\n` }, ...cards(snapshot)];
+  const changed = await deps.write(files);
+  // Cards this run no longer renders (a theme or card switch) go in the same commit.
+  const removed = await removeStale(cfg.outputDir, files, deps);
+  const committed = await commit([...changed, ...removed]);
   return { status: changed.length > 0 ? 'fresh' : 'unchanged', committed };
+}
+
+/** Deletes the Action's own cards in `dir` that are not among `written`; returns their paths. */
+async function removeStale(dir: string, written: OutputFile[], deps: RunDeps): Promise<string[]> {
+  const prefix = `${dir}/`;
+  const rendered = written.map((f) => f.path.slice(prefix.length));
+  const stale = staleCards(await deps.list(dir), rendered);
+  if (stale.length === 0) return [];
+  const removed = await deps.remove(stale.map((name) => prefix + name));
+  for (const path of removed) deps.info(`Removed ${path}: this run no longer renders it.`);
+  return removed;
 }

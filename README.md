@@ -87,7 +87,7 @@ Run it once from the Actions tab, or wait for the daily run. It commits the card
 | `output_dir` | `cards` | Directory for the cards and `snapshot.json`. |
 | `telemetry` | `true` | Send the usage ping. See [Privacy](#privacy). |
 
-Each card is written twice, as `<theme>-<card>-light.svg` and `<theme>-<card>-dark.svg`.
+Each card is written twice, as `<theme>-<card>-light.svg` and `<theme>-<card>-dark.svg`. After you change `theme` or `cards`, the next successful run deletes the cards it no longer renders, in the same commit as the new ones, and leaves every other file in `output_dir` alone.
 
 ## How it stays correct
 
