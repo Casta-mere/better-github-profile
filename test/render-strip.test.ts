@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fmtInt, renderCards, THEMES } from '../src/render/index';
+import { fmtCompact, renderCards, THEMES } from '../src/render/index';
 import { topLanguages } from '../src/render/languages';
 import type { Snapshot } from '../src/snapshot/types';
 import castaJson from './fixtures/snapshot-casta-mere.json';
@@ -15,7 +15,7 @@ describe('theme strip', () => {
 
   it('pill row in order', () => {
     const line = texts(THEMES.strip.render('strip', casta, { mode: 'light' })).join(' ');
-    const order = ['2,383', 'contributions', '795', 'past year', '59', 'repos', '★', '21', '22', 'followers'].map((t) =>
+    const order = ['2.4k', 'contributions', '795', 'past year', '59', 'repos', '★', '21', '22', 'followers'].map((t) =>
       line.indexOf(t),
     );
     expect(order.every((v, i) => v >= 0 && (i === 0 || v > order[i - 1]))).toBe(true);
@@ -23,7 +23,7 @@ describe('theme strip', () => {
 
   it('pill sections pair each number with its label', () => {
     const t = texts(THEMES.strip.render('strip', casta, { mode: 'light' }));
-    expect(t.slice(0, 5)).toEqual(['2,383 contributions', '795 past year', '59 repos', '★ 21', '22 followers']);
+    expect(t.slice(0, 5)).toEqual(['2.4k contributions', '795 past year', '59 repos', '★ 21', '22 followers']);
   });
 
   it('line 2: 52 wks, sparkline, langs, bar, top 3 languages', () => {
@@ -96,10 +96,10 @@ describe('theme strip', () => {
     const c = casta.contributions;
     expect(t.slice(0, 6)).toEqual([
       '5 forks',
-      `${fmtInt(c.commits)} commits`,
-      `${fmtInt(c.pullRequests)} PRs`,
-      `${fmtInt(c.issues)} issues`,
-      `${fmtInt(c.private)} private`,
+      `${fmtCompact(c.commits)} commits`,
+      `${fmtCompact(c.pullRequests)} PRs`,
+      `${fmtCompact(c.issues)} issues`,
+      `${fmtCompact(c.private)} private`,
       'since 2021',
     ]);
   });
@@ -118,12 +118,15 @@ describe('theme strip', () => {
       const svg = THEMES.strip.render('strip', big, { mode, stats: [...stats] });
       const pill = svg.match(/<rect x="0.5" y="[\d.]+" width="([\d.]+)"/)!;
       expect(Number(pill[1])).toBeLessThanOrEqual(819);
-      expect(texts(svg).slice(0, 6).every((x) => x.startsWith('99,999 '))).toBe(true);
+      expect(texts(svg).slice(0, 6).every((x) => x.startsWith('100k '))).toBe(true);
       expect(svg).not.toContain('transform');
     }
   });
 
-  it.each([9_999_999, 999_999_999])('six of the widest stats at %i shrink to fit the 820px card', (n) => {
+  it.each([
+    [999_999_999, '1B'],
+    [123_456, '123.5k'],
+  ])('six of the widest stats at %i print compact and fit the 820px card', (n, value) => {
     const big: Snapshot = {
       ...casta,
       user: { ...casta.user, followers: n },
@@ -132,14 +135,9 @@ describe('theme strip', () => {
     const stats = ['allTime', 'pastYear', 'followers', 'commits', 'reviews', 'private'] as const;
     for (const mode of MODES) {
       const svg = THEMES.strip.render('strip', big, { mode, stats: [...stats] });
-      const [, ty, k] = svg.match(/<g transform="translate\(0 ([\d.]+)\) scale\(([\d.]+)\)">/)!;
       const width = Number(svg.match(/<rect x="0.5" y="[\d.]+" width="([\d.]+)"/)![1]);
-      // The border's outer edge, stroke included, is at width + 1 before the scale.
-      expect(Number(k)).toBeLessThan(1);
-      expect((width + 1) * Number(k)).toBeLessThanOrEqual(820);
-      // Still centred in the pill's band (y 8..38).
-      expect(23 * Number(k) + Number(ty)).toBeCloseTo(23, 1);
-      const value = fmtInt(n);
+      expect(width).toBeLessThanOrEqual(819);
+      expect(svg).not.toContain('transform');
       const labels = ['contributions', 'past year', 'followers', 'commits', 'reviews', 'private'];
       expect(texts(svg).slice(0, 6)).toEqual(labels.map((l) => `${value} ${l}`));
     }

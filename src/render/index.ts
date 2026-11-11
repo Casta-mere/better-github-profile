@@ -7,7 +7,7 @@ import { stripTheme } from './themes/strip';
 export type { RenderOptions, Theme } from './theme';
 export { topLanguages, type LanguageSlice } from './languages';
 export { checkStats, STAT_KEYS, STATS, type StatDef, type StatKey } from './stats';
-export { escapeXml, fmtInt, fmtPct } from './svg';
+export { escapeXml, fmtCompact, fmtInt, fmtPct } from './svg';
 
 export const THEMES: Record<ThemeName, Theme> = {
   native,

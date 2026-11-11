@@ -20799,6 +20799,23 @@ var INT = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 function fmtInt(n) {
   return INT.format(n);
 }
+var UNITS = [
+  { size: 1e3, suffix: "k" },
+  { size: 1e6, suffix: "M" },
+  { size: 1e9, suffix: "B" }
+];
+function fmtCompact(n) {
+  if (n < 1e3) return fmtInt(n);
+  let i = n < 1e6 ? 0 : n < 1e9 ? 1 : 2;
+  let tenths = Math.floor((n * 10 + UNITS[i].size / 2) / UNITS[i].size);
+  if (tenths >= 1e4 && i < UNITS.length - 1) {
+    i += 1;
+    tenths = Math.floor((n * 10 + UNITS[i].size / 2) / UNITS[i].size);
+  }
+  const whole = Math.floor(tenths / 10);
+  const frac = tenths % 10;
+  return `${whole}${frac ? `.${frac}` : ""}${UNITS[i].suffix}`;
+}
 function fmtPct(p) {
   return `${p.toFixed(1)}%`;
 }
@@ -21014,7 +21031,7 @@ var STATS = {
 };
 function statValue(def, s) {
   const v = def.value(s);
-  return def.raw ? String(v) : fmtInt(v);
+  return def.raw ? String(v) : fmtCompact(v);
 }
 var isStatKey = (k) => STAT_KEYS.includes(k);
 function checkStats(theme, keys) {
@@ -21195,17 +21212,11 @@ function strip(s, o) {
     }
   });
   const pillW = x + 1;
-  const pill = [
+  body.push(
     `<rect x="0.5" y="${MARGIN_Y + 0.5}" width="${num(pillW - 1)}" height="${PILL_H - 1}" rx="${(PILL_H - 1) / 2}" fill="none" stroke="${p.bd}"/>`,
     ...rules.map((rx) => `<path d="M${num(rx)} ${MARGIN_Y + 1}v${PILL_H - 2}" stroke="${p.bd}"/>`),
     ...texts
-  ];
-  if (pillW <= W2) body.push(...pill);
-  else {
-    const k = Math.floor(W2 / pillW * 1e4) / 1e4;
-    const ty = (MARGIN_Y + PILL_H / 2) * (1 - k);
-    body.push(`<g transform="translate(0 ${num(ty)}) scale(${k})">`, ...pill, "</g>");
-  }
+  );
   const mid = LINE2_TOP + LINE2_H / 2;
   const base = mid + 4.5;
   let x2 = 0;

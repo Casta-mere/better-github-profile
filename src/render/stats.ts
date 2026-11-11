@@ -1,5 +1,5 @@
 import type { Snapshot } from '../snapshot/types';
-import { fmtInt } from './svg';
+import { fmtCompact } from './svg';
 import type { Theme } from './theme';
 
 /**
@@ -34,7 +34,7 @@ export interface StatDef {
   /** Native row icon. */
   icon: StatIcon;
   value(s: Snapshot): number;
-  /** Shown as is, without thousands separators (a year). */
+  /** Shown as is, never compacted (a year). */
   raw?: boolean;
 }
 
@@ -53,10 +53,10 @@ export const STATS: Record<StatKey, StatDef> = {
   joined: { label: 'On GitHub since', short: 'since', labelFirst: true, icon: 'calendar', value: (s) => s.user.createdYear, raw: true },
 };
 
-/** A stat's value as the cards print it: `2,383`, or `2021` for a raw one. */
+/** A stat's value as the cards print it: `795`, `2.4k`, or `2021` for a raw one. */
 export function statValue(def: StatDef, s: Snapshot): string {
   const v = def.value(s);
-  return def.raw ? String(v) : fmtInt(v);
+  return def.raw ? String(v) : fmtCompact(v);
 }
 
 const isStatKey = (k: string): k is StatKey => (STAT_KEYS as readonly string[]).includes(k);

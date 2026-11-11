@@ -12,6 +12,32 @@ export function fmtInt(n: number): string {
   return INT.format(n);
 }
 
+const UNITS = [
+  { size: 1e3, suffix: 'k' },
+  { size: 1e6, suffix: 'M' },
+  { size: 1e9, suffix: 'B' },
+] as const;
+
+/**
+ * A card number: below 1000 as is (`999`), otherwise in k / M / B with at most one
+ * decimal, rounded half up, `.0` dropped: `2383` → `2.4k`, `12000` → `12k`,
+ * `1250000` → `1.3M`. A value that rounds up to 1000 of a unit moves to the next one
+ * (`999950` → `1M`).
+ */
+export function fmtCompact(n: number): string {
+  if (n < 1000) return fmtInt(n);
+  let i = n < 1e6 ? 0 : n < 1e9 ? 1 : 2;
+  // Tenths of the unit, in integer arithmetic so halves round up exactly.
+  let tenths = Math.floor((n * 10 + UNITS[i].size / 2) / UNITS[i].size);
+  if (tenths >= 10000 && i < UNITS.length - 1) {
+    i += 1;
+    tenths = Math.floor((n * 10 + UNITS[i].size / 2) / UNITS[i].size);
+  }
+  const whole = Math.floor(tenths / 10);
+  const frac = tenths % 10;
+  return `${whole}${frac ? `.${frac}` : ''}${UNITS[i].suffix}`;
+}
+
 /** `42.2` → `42.2%`, always one decimal. */
 export function fmtPct(p: number): string {
   return `${p.toFixed(1)}%`;

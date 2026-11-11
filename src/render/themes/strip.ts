@@ -60,19 +60,11 @@ function strip(s: Snapshot, o: RenderOptions): string {
     }
   });
   const pillW = x + 1;
-  const pill = [
+  body.push(
     `<rect x="0.5" y="${MARGIN_Y + 0.5}" width="${num(pillW - 1)}" height="${PILL_H - 1}" rx="${(PILL_H - 1) / 2}" fill="none" stroke="${p.bd}"/>`,
     ...rules.map((rx) => `<path d="M${num(rx)} ${MARGIN_Y + 1}v${PILL_H - 2}" stroke="${p.bd}"/>`),
     ...texts,
-  ];
-  if (pillW <= W) body.push(...pill);
-  else {
-    // Very large values: shrink the whole pill so its outer edge lands within the card,
-    // keeping it centred in its band. The scale rounds down so it never overshoots.
-    const k = Math.floor((W / pillW) * 1e4) / 1e4;
-    const ty = (MARGIN_Y + PILL_H / 2) * (1 - k);
-    body.push(`<g transform="translate(0 ${num(ty)}) scale(${k})">`, ...pill, '</g>');
-  }
+  );
 
   // Line 2: 52 wks ▁▃▅ langs ▬▬▬ HTML · Python · TypeScript ……… stale marker.
   const mid = LINE2_TOP + LINE2_H / 2;
@@ -114,8 +106,8 @@ function strip(s: Snapshot, o: RenderOptions): string {
   return svgDoc({ width: W, height: H, title: `${who}'s GitHub stats`, css: css(p), body });
 }
 
-// At most 6 stats: six of the widest labels with 5-digit numbers still fit in 820px;
-// beyond that the pill shrinks to fit.
+// At most 6 stats: values are compact (at widest four digits, a point
+// and a unit, e.g. `123.5k`), and six of the widest labels at that width fit in 820px.
 export const stripTheme = defineTheme(
   'strip',
   { defaultStats: ['allTime', 'pastYear', 'repos', 'stars', 'followers'], maxStats: 6 },

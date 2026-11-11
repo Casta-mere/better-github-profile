@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { renderCards, STAT_KEYS, STATS, THEMES } from '../src/render/index';
 import { topLanguages } from '../src/render/languages';
 import { PRIMER } from '../src/render/primer';
-import { escapeXml, fmtInt, fmtPct } from '../src/render/svg';
+import { escapeXml, fmtCompact, fmtInt, fmtPct } from '../src/render/svg';
 import type { Snapshot } from '../src/snapshot/types';
 import castaJson from './fixtures/snapshot-casta-mere.json';
 import emptyJson from './fixtures/snapshot-empty.json';
@@ -29,6 +29,24 @@ describe('helpers', () => {
     expect(fmtPct(42.2)).toBe('42.2%');
     expect(fmtPct(5)).toBe('5.0%');
   });
+
+  it.each([
+    [0, '0'],
+    [21, '21'],
+    [999, '999'],
+    [1000, '1k'],
+    [1049, '1k'],
+    [1050, '1.1k'],
+    [2383, '2.4k'],
+    [12_000, '12k'],
+    [12_345, '12.3k'],
+    [999_950, '1M'],
+    [999_999, '1M'],
+    [1_250_000, '1.3M'],
+    [9_999_999, '10M'],
+    [999_950_000, '1B'],
+    [1_500_000_000, '1.5B'],
+  ])('fmtCompact(%i) is %s', (n, s) => expect(fmtCompact(n)).toBe(s));
 
   it('escapes the XML specials', () => {
     expect(escapeXml(`A&B <x> "q"`)).toBe('A&amp;B &lt;x&gt; &quot;q&quot;');
@@ -61,7 +79,7 @@ describe('theme native', () => {
     expect(t).toContain("Castamere's GitHub Statistics");
     expect(valueOf('Stars')).toBe('21');
     expect(valueOf('Forks')).toBe('5');
-    expect(valueOf('All-time contributions')).toBe('2,383');
+    expect(valueOf('All-time contributions')).toBe('2.4k');
     expect(valueOf('Contributions (past year)')).toBe('795');
     expect(valueOf('Repositories')).toBe('59');
     expect(t).toContain('last 52 weeks');
